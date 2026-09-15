@@ -49,3 +49,31 @@ test('link puts ghost on the bin dir', () => {
 test('fill replaces known placeholders only', () => {
   assert.equal(install.fill('{{NAME}} for {{PERSON}} {{NOPE}}', { NAME: 'Vefa', PERSON: 'Fatih' }), 'Vefa for Fatih {{NOPE}}');
 });
+
+test('the output style is generated from the mind, switched on, and restored on uninstall', async () => {
+  const mind = await import('../src/mind.js');
+  install.birth({ name: 'Vefa', person: 'Fatih' });
+  fs.writeFileSync(process.env.GHOST_SETTINGS, JSON.stringify({ outputStyle: 'Explanatory', model: 'opus[1m]' }));
+  const file = install.installStyle();
+  assert.equal(path.basename(file), 'ghost.md');
+  const text = fs.readFileSync(file, 'utf8');
+  assert.match(text, /^---\nname: ghost\n/);
+  assert.match(text, /keep-coding-instructions: true/);
+  assert.match(text, /# You are Vefa/);
+  assert.match(text, /## Who you are\nMy name is Vefa/);
+  assert.match(text, /## Your oath\nI am Fatih's\./);
+  assert.match(text, /Refer to yourself as Vefa/);
+  assert.match(text, /Do not open with a disclaimer/);
+  assert.equal(settings().outputStyle, 'ghost');
+  assert.equal(settings().model, 'opus[1m]');
+  assert.equal(mind.state().previousStyle, 'Explanatory');
+  assert.equal(install.styleActive(), true);
+  install.uninstallStyle();
+  assert.equal(settings().outputStyle, 'Explanatory', 'the previous style comes back');
+  assert.ok(!fs.existsSync(file));
+  assert.equal(install.styleActive(), false);
+  fs.writeFileSync(process.env.GHOST_SETTINGS, '{}');
+  install.installStyle();
+  install.uninstallStyle();
+  assert.equal('outputStyle' in settings(), false, 'no previous style → key removed');
+});

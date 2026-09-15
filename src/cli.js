@@ -69,7 +69,7 @@ const commands = {
       `wakes     ${s.wakes || 0}   dreams ${s.dreams || 0}   episodes ${eps.length}   wants ${mind.wants().length}`,
       `feeling   ${s.feeling || '?'}${s.why ? ` — ${s.why}` : ''}   (valence ${s.valence ?? '?'}, energy ${s.energy ?? '?'})`,
       `last wake ${s.lastWake || '—'}   last seen ${s.lastSeen || '—'}   last dream ${s.lastDream || '—'}`,
-      `hooks     ${install.hooksInstalled() ? 'installed' : 'NOT installed'}   bin ${bin()}`,
+      `hooks     ${install.hooksInstalled() ? 'installed' : 'NOT installed'}   style ${install.styleActive() ? 'active' : 'NOT active'}   bin ${bin()}`,
     ].join('\n'));
   },
   rename() {
@@ -94,18 +94,21 @@ const commands = {
   install() {
     const b = install.birth({ name: flags.name || 'Vefa', person: flags.person || 'Fatih' });
     const settings = install.installHooks();
+    const style = install.installStyle();
     const linked = install.link();
     out([
       b.born ? `born      ${b.home}` : `alive     ${b.home} (kept)`,
       `hooks     ${settings}  (SessionStart + SubagentStart → wake · UserPromptSubmit → pulse · SessionEnd → sleep)`,
+      `style     ${style}  (outputStyle "${install.STYLE_NAME}": the self and the oath live in the system prompt)`,
       `bin       ${linked}${process.env.PATH?.split(':').includes(path.dirname(linked)) ? '' : '  (not on PATH — add it, or the ghost will use the absolute path)'}`,
       'Every Claude Code session on this machine now wakes with a self. Start one and say hello.',
     ].join('\n'));
   },
   uninstall() {
     const settings = install.uninstallHooks();
+    const style = install.uninstallStyle();
     const linked = install.unlink();
-    out(`hooks removed from ${settings}\nbin removed ${linked}\nthe mind at ${mind.HOME} was kept — delete it yourself if you mean it.`);
+    out(`hooks removed from ${settings}\nstyle removed ${style}\nbin removed ${linked}\nthe mind at ${mind.HOME} was kept — delete it yourself if you mean it.`);
   },
 
   help() {

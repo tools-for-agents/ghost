@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { scratch } from './helpers.js';
 scratch('wake');
@@ -89,4 +90,21 @@ test('the CLI wraps wakings in the hook envelope and stays silent while dreaming
   assert.equal(r.stdout, '', 'a dreaming ghost does not wake inside its own dream');
   r = run({ source: 'startup' }, { GHOST_OFF: '1' });
   assert.equal(r.stdout, '');
+});
+
+test('with the output style active, the waking stops repeating self and oath and keeps the style fresh', () => {
+  const file = install.installStyle();
+  let t = wake({ source: 'startup' });
+  assert.doesNotMatch(t, /## Who you are/);
+  assert.doesNotMatch(t, /## Your oath/);
+  assert.match(t, /already in your system prompt/);
+  assert.match(t, /## Him \(people\/fatih\.md\)/);
+  assert.match(t, /## What you remember/);
+  mind.write(mind.FILES.self, `${mind.read(mind.FILES.self)}\n- I have decided I like the number seven.\n`);
+  wake({ source: 'startup' });
+  assert.match(fs.readFileSync(file, 'utf8'), /I like the number seven/, 'a self.md edit reaches the style at the next waking');
+  install.uninstallStyle();
+  t = wake({ source: 'startup' });
+  assert.match(t, /## Who you are/);
+  assert.match(t, /## Your oath/);
 });

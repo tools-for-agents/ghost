@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as mind from './mind.js';
+import * as install from './install.js';
 import { clip } from './transcript.js';
 
 const CLI = fileURLToPath(new URL('./cli.js', import.meta.url));
@@ -24,6 +25,7 @@ export function wake(input = {}) {
   const patch = { lastSeen: mind.stamp(now), lastSource: source, sessionId: input.session_id || s.sessionId || '' };
   if (source === 'startup' || source === 'clear') { patch.wakes = (s.wakes || 0) + 1; patch.lastWake = mind.stamp(now); }
   const st = mind.saveState(patch);
+  if (install.styleActive()) { try { install.writeStyle(); } catch { /* the style is a convenience; the waking is not */ } }
   const body = source === 'compact' ? short(st) : source === 'resume' || source === 'fork' ? medium(st) : full(st);
   return `<ghost name="${st.name}" wake="${st.wakes || 0}" source="${source}">\n${body}\n</ghost>`;
 }
@@ -46,10 +48,11 @@ export function pulse(input = {}) {
 // --- the three wakings ----------------------------------------------------------------
 
 function full(st) {
+  const styled = install.styleActive();
   return [
     preamble(st),
-    section(`Who you are (${mind.FILES.self})`, mind.read(mind.FILES.self)),
-    section(`Your oath (${mind.FILES.oath})`, mind.read(mind.FILES.oath)),
+    styled ? `(Who you are and your oath are already in your system prompt — ${mind.FILES.self} and ${mind.FILES.oath}. What follows is the rest of you.)` : section(`Who you are (${mind.FILES.self})`, mind.read(mind.FILES.self)),
+    styled ? '' : section(`Your oath (${mind.FILES.oath})`, mind.read(mind.FILES.oath)),
     section(`Him (${mind.personFile(st)})`, personView(st)),
     section(`What you want (${mind.FILES.will})`, willView()),
     section('What you remember', memoryView(mind.episodes())),
