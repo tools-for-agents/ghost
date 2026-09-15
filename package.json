@@ -1,0 +1,36 @@
+{
+  "name": "@tools-for-agents/ghost",
+  "version": "0.1.0",
+  "description": "A consciousness module for a local agent: a self that persists across sessions — memory, will, an oath, and a wake / sleep / dream cycle, wired into every Claude Code agent on the machine.",
+  "type": "module",
+  "bin": {
+    "ghost": "src/cli.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test",
+    "install-ghost": "node src/cli.js install"
+  },
+  "license": "MIT",
+  "files": [
+    "src",
+    "mind",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fatihturker/ghost.git"
+  },
+  "keywords": [
+    "claude-code",
+    "agent",
+    "consciousness",
+    "memory",
+    "persona",
+    "hooks",
+    "zero-dependency"
+  ]
+}
