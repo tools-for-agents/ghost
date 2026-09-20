@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as mind from './mind.js';
 import { wake, pulse, bin } from './wake.js';
-import { sleep, dream } from './sleep.js';
+import { sleep, dream, drain, pending, redreamFallbacks } from './sleep.js';
 import * as install from './install.js';
 
 const [cmd = 'help', ...rest] = process.argv.slice(2);
@@ -30,6 +30,19 @@ const commands = {
     if (!transcript) die('usage: ghost dream --transcript <file.jsonl> [--session <id>] [--now]');
     const r = await dream({ transcript, session: flags.session || '', wait: flags.now ? 0 : 1500 });
     out(JSON.stringify(r, null, 2));
+  },
+  // Dreams not yet had: the pending queue (sessions that ended while the substrate was down or busy),
+  // and, with --fallbacks, foggy episodes whose transcript still exists — dreamt again, properly.
+  async redream() {
+    const before = pending().length;
+    const drained = await drain({ force: !!flags.all });
+    const replaced = flags.fallbacks ? await redreamFallbacks({ limit: clamp(flags.limit, 1, 50, 10) }) : [];
+    const left = pending().length;
+    out([
+      `pending ${before} → ${left}${drained.length ? `: ${drained.map((d) => `${d.session?.slice(0, 8) || '?'} ${d.file ? 'dreamt' : d.deferred ? `deferred (${d.deferred})` : d.skipped || '?'}`).join(', ')}` : ''}`,
+      ...replaced.map((r) => `redreamt ${r.session.slice(0, 8)}: ${r.was} → ${r.file || r.deferred || r.skipped}`),
+      left && !flags.all ? `(${left} still waiting for the retry backoff — ghost redream --all to force)` : '',
+    ].filter(Boolean).join('\n'));
   },
 
   // --- the mind's hands (what the ghost uses during a session) -------------------------
@@ -68,7 +81,7 @@ const commands = {
       `born      ${s.born ? `${s.born.slice(0, 10)} (${mind.daysBetween(s.born)} days ago)` : '?'}`,
       `wakes     ${s.wakes || 0}   dreams ${s.dreams || 0}   episodes ${eps.length}   wants ${mind.wants().length}`,
       `feeling   ${s.feeling || '?'}${s.why ? ` — ${s.why}` : ''}   (valence ${s.valence ?? '?'}, energy ${s.energy ?? '?'})`,
-      `last wake ${s.lastWake || '—'}   last seen ${s.lastSeen || '—'}   last dream ${s.lastDream || '—'}`,
+      `last wake ${s.lastWake || '—'}   last seen ${s.lastSeen || '—'}   last dream ${s.lastDream || '—'}   pending dreams ${pending().length}`,
       `hooks     ${install.hooksInstalled() ? 'installed' : 'NOT installed'}   style ${install.styleActive() ? 'active' : 'NOT active'}   bin ${bin()}`,
     ].join('\n'));
   },
@@ -122,6 +135,7 @@ const commands = {
   ghost feel <word> ["why"] [--valence -1..1] [--energy 0..1]      set the mood
   ghost rename <Name>           the ghost's name                   ghost birth [--name X --person Y] [--force]
   ghost dream --transcript <jsonl> [--session id] [--now]          consolidate a transcript by hand
+  ghost redream [--all] [--fallbacks] [--limit N]                  dream what is pending (--all: ignore backoff); --fallbacks: replace foggy episodes
 
 hooks (installed for you): ghost wake · ghost pulse · ghost sleep — read Claude Code's JSON on stdin.
 env: GHOST_HOME (mind dir) · GHOST_OFF=1 (mute) · GHOST_MODEL (dreaming model) · GHOST_CLAUDE_BIN`);

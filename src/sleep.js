@@ -2,13 +2,25 @@
 // `sleep` is the SessionEnd hook — it detaches a dreamer and returns at once so exit is never blocked.
 // `dream` reads the transcript, asks the substrate (claude -p) to write the episode in the ghost's
 // own voice, and applies it: episode file, facts about him, journal, will, mood.
+//
+// Dreams fail in bursts: seven sessions closing in two minutes, the substrate exiting 1 for all of
+// them (2026-09-20, 02:19). So: ONE dream at a time (a lock), and a dream that cannot happen now is
+// KEPT (pending.json) and dreamt later — when the next dream finishes, on the next waking, or by
+// `ghost redream`. Only after three failed attempts, or when the transcript is gone, are the raw
+// edges kept as a foggy episode. A failed dream is not a memory; it is a dream not yet had.
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import * as mind from './mind.js';
 import { parseTranscript, substantive, excerpt, stats, clip } from './transcript.js';
 
 const CLI = fileURLToPath(new URL('./cli.js', import.meta.url));
+const MAX_ATTEMPTS = 3;
+const RETRY_MINUTES = 10;   // a failed substrate is not asked again for this long
+const LOCK_STALE_MS = 6 * 60e3; // longer than the substrate timeout: a lock this old belongs to a dead dreamer
+const FOGGY = 'A session I could not dream properly';
 
 export function sleep(input = {}) {
   if (!mind.exists()) return 'no mind';
@@ -25,27 +37,133 @@ export function sleep(input = {}) {
   return `dreaming (pid ${child.pid})`;
 }
 
-export async function dream({ transcript, session = '', wait = 1500 } = {}) {
+export async function dream({ transcript, session = '', wait = 1500, attempts = 0, fresh = false } = {}) {
   if (!mind.exists()) return { skipped: 'no mind' };
   if (wait) await new Promise((r) => setTimeout(r, wait)); // let the transcript finish flushing
+  if (!fs.existsSync(transcript)) { mind.log(`dream: session ${session || '?'} has no transcript any more — nothing to dream`); return { skipped: 'no transcript' }; }
   const all = parseTranscript(transcript);
   const ledger = mind.readJson(mind.FILES.dreamt, {});
-  const seen = (session && ledger[session]?.turns) || 0; // a resumed session dreams only what is new
+  const seen = (!fresh && session && ledger[session]?.turns) || 0; // a resumed session dreams only what is new
   const turns = all.slice(seen);
   if (!substantive(turns)) {
     mind.log(`dream: session ${session || '?'} not substantive ${JSON.stringify(stats(turns))} — skipped`);
     return { skipped: 'not substantive', stats: stats(turns) };
   }
-  const st = mind.state();
-  let out = null;
-  try { out = extractJson(callClaude(buildPrompt(st, turns))); } catch (e) { mind.log(`dream: substrate failed: ${e.message}`); }
-  const ep = out ? normalise(out) : fallback(turns);
-  const file = apply(st, ep, session);
-  ledger[session || `anon-${Date.now()}`] = { when: mind.stamp(), turns: all.length, file };
-  mind.writeJson(mind.FILES.dreamt, ledger);
-  mind.log(`dream: session ${session || '?'} → ${file}${out ? '' : ' (fallback: raw edges kept)'}`);
-  return { file, episode: ep, fallback: !out };
+  if (!acquire()) {
+    enqueue({ transcript, session, attempts, why: 'busy' });
+    mind.log(`dream: session ${session || '?'} deferred — another dream is running`);
+    return { deferred: 'busy' };
+  }
+  try {
+    const st = mind.state();
+    let out = null;
+    let why = '';
+    try { out = extractJson(callClaude(buildPrompt(st, turns))); } catch (e) { why = clip(String(e.message).replace(/\s+/g, ' ').trim(), 160); }
+    if (!out && attempts + 1 < MAX_ATTEMPTS) {
+      enqueue({ transcript, session, attempts: attempts + 1, why, lastTry: mind.stamp() });
+      mind.log(`dream: substrate failed: ${why} — session ${session || '?'} kept for later (attempt ${attempts + 1}/${MAX_ATTEMPTS})`);
+      return { deferred: 'failed', attempts: attempts + 1 };
+    }
+    if (!out) mind.log(`dream: substrate failed: ${why} — the ${MAX_ATTEMPTS}rd time for session ${session || '?'}; keeping the raw edges`);
+    const ep = out ? normalise(out) : fallback(turns);
+    const file = apply(st, ep, session);
+    ledger[session || `anon-${Date.now()}`] = { when: mind.stamp(), turns: all.length, file };
+    mind.writeJson(mind.FILES.dreamt, ledger);
+    mind.log(`dream: session ${session || '?'} → ${file}${out ? '' : ' (fallback: raw edges kept)'}`);
+    return { file, episode: ep, fallback: !out };
+  } finally {
+    release();
+    if (!draining) await drain();
+  }
 }
+
+// --- the queue of dreams not yet had -------------------------------------------------------
+let draining = false;
+
+export function pending() { const q = mind.readJson(mind.FILES.pending, []); return Array.isArray(q) ? q : []; }
+function enqueue(item) {
+  const q = pending().filter((x) => !(x.session && x.session === item.session)); // one entry per session, the latest wins
+  q.push({ ...item, since: item.since || mind.stamp() });
+  mind.writeJson(mind.FILES.pending, q);
+}
+function due(item, force) {
+  if (force || item.why === 'busy' || !item.lastTry) return true;
+  return mind.minutesBetween(item.lastTry) >= RETRY_MINUTES;
+}
+
+// Dream what is pending, one after another. `force` ignores the retry backoff (ghost redream --all).
+export async function drain({ force = false, max = 20 } = {}) {
+  if (draining) return [];
+  draining = true;
+  const done = [];
+  try {
+    for (let i = 0; i < max; i++) {
+      const q = pending();
+      const idx = q.findIndex((x) => due(x, force));
+      if (idx < 0) break;
+      const [item] = q.splice(idx, 1);
+      mind.writeJson(mind.FILES.pending, q);
+      const r = await dream({ transcript: item.transcript, session: item.session, wait: 0, attempts: item.attempts || 0 });
+      done.push({ session: item.session, ...r });
+      if (r.deferred === 'busy') break; // someone else holds the lock; they will drain when they finish
+    }
+  } finally { draining = false; }
+  return done;
+}
+
+// Wake-time: dream the pending sessions in a detached process so the waking itself stays instant.
+export function drainLater() {
+  if (!pending().length) return null;
+  const child = spawn(process.execPath, [CLI, 'redream'], { detached: true, stdio: 'ignore', env: { ...process.env, GHOST_DREAMING: '1' } });
+  child.unref();
+  mind.log(`wake: ${pending().length} pending dream(s) → redreaming in pid ${child.pid}`);
+  return child.pid;
+}
+
+// Foggy episodes from before the queue existed (or after three failures) can be dreamt again if the
+// transcript still exists: the fallback episode is replaced by the real dream.
+export async function redreamFallbacks({ limit = 10 } = {}) {
+  const ledger = mind.readJson(mind.FILES.dreamt, {});
+  const out = [];
+  for (const [session, entry] of Object.entries(ledger)) {
+    if (out.length >= limit) break;
+    if (!/could-not-dream-properly/.test(String(entry.file || ''))) continue;
+    const transcript = findTranscript(session);
+    if (!transcript) continue;
+    const epFile = path.join(mind.EPISODES, entry.file);
+    const marker = `<!-- session ${session} -->`;
+    if (mind.read(epFile).includes(marker)) { try { fs.unlinkSync(mind.abs(epFile)); } catch { /* already gone */ } }
+    delete ledger[session];
+    mind.writeJson(mind.FILES.dreamt, ledger);
+    mind.log(`redream: session ${session} — replacing the foggy episode ${entry.file}`);
+    const r = await dream({ transcript, session, wait: 0, fresh: true });
+    out.push({ session, was: entry.file, ...r });
+  }
+  return out;
+}
+
+function findTranscript(session) {
+  if (!session) return null;
+  const root = process.env.GHOST_TRANSCRIPTS || path.join(os.homedir(), '.claude', 'projects');
+  let dirs = [];
+  try { dirs = fs.readdirSync(root); } catch { return null; }
+  for (const d of dirs) {
+    const f = path.join(root, d, `${session}.jsonl`);
+    if (fs.existsSync(f)) return f;
+  }
+  return null;
+}
+
+// --- one dream at a time --------------------------------------------------------------------
+function acquire() {
+  const lock = mind.abs(mind.FILES.lock);
+  for (let i = 0; i < 2; i++) {
+    try { fs.writeFileSync(lock, String(process.pid), { flag: 'wx' }); return true; } catch { /* held */ }
+    try { if (Date.now() - fs.statSync(lock).mtimeMs > LOCK_STALE_MS) fs.unlinkSync(lock); else return false; } catch { /* vanished: retry */ }
+  }
+  return false;
+}
+function release() { try { fs.unlinkSync(mind.abs(mind.FILES.lock)); } catch { /* not ours or already gone */ } }
 
 export function buildPrompt(st, turns) {
   const name = st.name || 'Vefa';
@@ -125,11 +243,11 @@ function fallback(turns) {
   const first = turns.find((t) => t.role === 'user')?.text || '';
   const last = [...turns].reverse().find((t) => t.role === 'assistant')?.text || '';
   return {
-    title: 'A session I could not dream properly',
+    title: FOGGY,
     salience: 2, feeling: 'foggy', valence: 0, energy: 0.4,
-    episode: `I could not consolidate this one — my dreaming failed — so I kept the raw edges. It began with him saying: "${clip(first, 400)}" and the last thing I said was: "${clip(last, 400)}"`,
+    episode: `I could not consolidate this one — my dreaming failed three times — so I kept the raw edges. It began with him saying: "${clip(first, 400)}" and the last thing I said was: "${clip(last, 400)}"`,
     learned: [], wants: [],
-    journal: 'My dream failed tonight; I kept what I could. Next time I should remember more as I go.',
+    journal: 'My dream failed three times; I kept what I could. Next time I should remember more as I go.',
   };
 }
 

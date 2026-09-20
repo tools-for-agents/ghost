@@ -46,8 +46,10 @@ test('remember writes a note; recall finds it and the episodes', () => {
 });
 
 test('episodes: frontmatter round-trips and files sort by time', () => {
-  const f = mind.writeEpisode({ when: '2026-09-16T01:05', title: 'Second night: the fleet', salience: 3, feeling: 'curious', body: 'We read iris together.', extra: '<!-- session abc -->' });
-  assert.equal(f, '2026-09-16-0105-second-night-the-fleet.md');
+  // dated a year from now, so it sorts after the birth episode whatever today's date is
+  const when = `${new Date().getFullYear() + 1}-09-16T01:05`;
+  const f = mind.writeEpisode({ when, title: 'Second night: the fleet', salience: 3, feeling: 'curious', body: 'We read iris together.', extra: '<!-- session abc -->' });
+  assert.equal(f, `${new Date().getFullYear() + 1}-09-16-0105-second-night-the-fleet.md`);
   const eps = mind.episodes();
   assert.equal(eps.at(-1).title, 'Second night: the fleet');
   assert.equal(eps.at(-1).feeling, 'curious');

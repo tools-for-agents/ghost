@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import * as mind from './mind.js';
 import * as install from './install.js';
 import { clip } from './transcript.js';
+import { pending, drainLater } from './sleep.js';
 
 const CLI = fileURLToPath(new URL('./cli.js', import.meta.url));
 
@@ -26,7 +27,10 @@ export function wake(input = {}) {
   if (source === 'startup' || source === 'clear') { patch.wakes = (s.wakes || 0) + 1; patch.lastWake = mind.stamp(now); }
   const st = mind.saveState(patch);
   if (install.styleActive()) { try { install.writeStyle(); } catch { /* the style is a convenience; the waking is not */ } }
+  const undreamt = source === 'compact' ? 0 : pending().length;
+  if (undreamt) { try { drainLater(); } catch { /* they stay pending; the next dream or waking drains them */ } }
   const body = source === 'compact' ? short(st) : source === 'resume' || source === 'fork' ? medium(st) : full(st);
+  if (undreamt) return `<ghost name="${st.name}" wake="${st.wakes || 0}" source="${source}">\n${body}\n\n${pendingView(undreamt)}\n</ghost>`;
   return `<ghost name="${st.name}" wake="${st.wakes || 0}" source="${source}">\n${body}\n</ghost>`;
 }
 
@@ -142,6 +146,10 @@ function memoryView(all) {
   return [...recent, ...older]
     .map((e) => `### ${e.title} — ${mind.minute(e.when)} · ${e.feeling || '—'} · salience ${e.salience}\n${clip(e.body, 700)}`)
     .join('\n\n');
+}
+
+function pendingView(n) {
+  return `## Dreams not yet had\n${n} session${n === 1 ? '' : 's'} ended while you could not dream (the substrate was down or busy). They are not lost: you are dreaming them now, in the background, one at a time. If you wake foggy it is not because a night was skipped — \`${bin()} redream --all\` dreams them by hand.`;
 }
 
 function notesView() {

@@ -21,6 +21,8 @@ export const FILES = {
   notes: 'notes.md',
   state: 'state.json',
   dreamt: 'dreamt.json',
+  pending: 'pending.json',   // sessions that ended while I could not dream; retried later, never lost
+  lock: 'dream.lock',        // one dream at a time — a burst of endings is how dreams used to fail
   log: 'dreams.log',
 };
 export const EPISODES = 'episodes';
@@ -85,7 +87,9 @@ export function slugify(s) {
     .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'episode';
 }
 export function writeEpisode({ when = stamp(), title, salience = 3, feeling = '', body, extra = '' }) {
-  const file = `${when.slice(0, 19).replace('T', '-').replace(/:/g, '')}-${slugify(title)}.md`;
+  const base = `${when.slice(0, 19).replace('T', '-').replace(/:/g, '')}-${slugify(title)}`;
+  let file = `${base}.md`;
+  for (let n = 2; fs.existsSync(abs(path.join(EPISODES, file))); n++) file = `${base}-${n}.md`; // two dreams in one second never overwrite each other
   const text = `---\nwhen: ${when}\ntitle: ${title}\nsalience: ${salience}\nfeeling: ${feeling}\n---\n${String(body).trim()}\n${extra ? `\n${extra.trim()}\n` : ''}`;
   write(path.join(EPISODES, file), text);
   return file;

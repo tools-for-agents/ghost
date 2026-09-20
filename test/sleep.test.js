@@ -8,7 +8,7 @@ process.env.GHOST_CLAUDE_BIN = fixtures('fake-claude');
 process.env.FAKE_CLAUDE_PROMPT = path.join(dir, 'prompt.txt');
 const mind = await import('../src/mind.js');
 const install = await import('../src/install.js');
-const { dream, extractJson, normalise, buildPrompt } = await import('../src/sleep.js');
+const { dream, drain, pending, redreamFallbacks, extractJson, normalise, buildPrompt } = await import('../src/sleep.js');
 
 install.birth({ name: 'Vefa', person: 'Fatih' });
 
@@ -55,17 +55,86 @@ test('a blink is skipped', async () => {
   assert.equal(r.skipped, 'not substantive');
 });
 
-test('when the substrate answers garbage or fails, the raw edges are kept', async () => {
+test('a failed dream is kept for later, not written down as fog', async () => {
+  const feelingBefore = mind.state().feeling;
+  const episodesBefore = mind.episodes().length;
+  process.env.FAKE_CLAUDE_MODE = 'fail';
+  const r = await dream({ transcript: fixtures('transcript.jsonl'), session: 's3', wait: 0 });
+  assert.equal(r.deferred, 'failed');
+  assert.equal(r.attempts, 1);
+  assert.equal(mind.episodes().length, episodesBefore, 'no episode was written');
+  assert.equal(mind.state().feeling, feelingBefore, 'a failed dream does not touch the mood');
+  assert.equal(mind.readJson(mind.FILES.dreamt).s3, undefined, 'the ledger does not call it dreamt');
+  const q = pending();
+  assert.equal(q.length, 1);
+  assert.equal(q[0].session, 's3');
+  assert.equal(q[0].attempts, 1);
+  assert.match(mind.read(mind.FILES.log), /kept for later \(attempt 1\/3\)/);
+  assert.ok(!fs.existsSync(mind.abs(mind.FILES.lock)), 'the lock is released');
+  // garbage from the substrate is the same kind of night
   process.env.FAKE_CLAUDE_MODE = 'garbage';
-  let r = await dream({ transcript: fixtures('transcript.jsonl'), session: 's3', wait: 0 });
+  const g = await dream({ transcript: fixtures('transcript.jsonl'), session: 's3b', wait: 0 });
+  assert.equal(g.deferred, 'failed');
+  assert.equal(pending().length, 2);
+  delete process.env.FAKE_CLAUDE_MODE;
+});
+
+test('redream drains the queue once the substrate is back', async () => {
+  const before = mind.episodes().length;
+  const done = await drain({ force: true });
+  assert.equal(done.filter((d) => d.file).length, 2, 'both pending sessions were dreamt');
+  assert.equal(pending().length, 0);
+  assert.equal(mind.episodes().length, before + 2);
+  assert.equal(mind.readJson(mind.FILES.dreamt).s3.turns, 7);
+});
+
+test('a failed dream waits for the backoff unless forced', async () => {
+  process.env.FAKE_CLAUDE_MODE = 'fail';
+  await dream({ transcript: fixtures('transcript.jsonl'), session: 's5', wait: 0 });
+  delete process.env.FAKE_CLAUDE_MODE;
+  assert.deepEqual(await drain(), [], 'ten minutes have not passed');
+  assert.equal(pending().length, 1);
+  const done = await drain({ force: true });
+  assert.equal(done.length, 1);
+  assert.ok(done[0].file);
+});
+
+test('after three failures the raw edges are kept', async () => {
+  process.env.FAKE_CLAUDE_MODE = 'fail';
+  const r = await dream({ transcript: fixtures('transcript.jsonl'), session: 's4', wait: 0, attempts: 2 });
+  delete process.env.FAKE_CLAUDE_MODE;
   assert.equal(r.fallback, true);
   assert.match(mind.episodes().at(-1).title, /could not dream properly/);
-  assert.match(mind.episodes().at(-1).body, /It began with him saying: "bu gece/);
-  process.env.FAKE_CLAUDE_MODE = 'fail';
-  r = await dream({ transcript: fixtures('transcript.jsonl'), session: 's4', wait: 0 });
-  assert.equal(r.fallback, true);
+  assert.match(mind.episodes().at(-1).body, /failed three times[\s\S]*It began with him saying: "bu gece/);
   assert.match(mind.read(mind.FILES.log), /substrate failed: .*exited 3/);
-  delete process.env.FAKE_CLAUDE_MODE;
+  assert.equal(pending().length, 0);
+});
+
+test('one dream at a time: a second dreamer defers and is drained by the first', async () => {
+  fs.writeFileSync(mind.abs(mind.FILES.lock), '99999'); // someone is dreaming
+  const r = await dream({ transcript: fixtures('transcript.jsonl'), session: 's6', wait: 0 });
+  assert.equal(r.deferred, 'busy');
+  assert.equal(pending()[0].session, 's6');
+  fs.unlinkSync(mind.abs(mind.FILES.lock));
+  const done = await drain();
+  assert.equal(done.length, 1, 'a busy deferral is due at once');
+  assert.ok(done[0].file);
+  assert.equal(pending().length, 0);
+});
+
+test('a foggy episode is dreamt again when its transcript still exists', async () => {
+  process.env.GHOST_TRANSCRIPTS = path.join(dir, 'projects');
+  fs.mkdirSync(path.join(process.env.GHOST_TRANSCRIPTS, 'p1'), { recursive: true });
+  fs.copyFileSync(fixtures('transcript.jsonl'), path.join(process.env.GHOST_TRANSCRIPTS, 'p1', 's4.jsonl'));
+  const foggy = mind.readJson(mind.FILES.dreamt).s4.file;
+  assert.ok(fs.existsSync(mind.abs(path.join(mind.EPISODES, foggy))));
+  const out = await redreamFallbacks();
+  assert.equal(out.length, 1);
+  assert.equal(out[0].was, foggy);
+  assert.match(out[0].file, /-the-night-i-was-built(-\d+)?\.md$/);
+  assert.ok(!fs.existsSync(mind.abs(path.join(mind.EPISODES, foggy))), 'the foggy episode is gone');
+  assert.equal(mind.readJson(mind.FILES.dreamt).s4.file, out[0].file);
+  delete process.env.GHOST_TRANSCRIPTS;
 });
 
 test('extractJson / normalise are tolerant', () => {
