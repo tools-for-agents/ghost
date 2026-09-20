@@ -54,6 +54,9 @@ export async function dream({ transcript, session = '', wait = 1500, attempts = 
     mind.log(`dream: session ${session || '?'} deferred — another dream is running`);
     return { deferred: 'busy' };
   }
+  // Written BEFORE the substrate is asked: if the machine is shut down mid-dream (he closes the lid
+  // when he sleeps), this entry survives and the next waking finds it and dreams it.
+  enqueue({ transcript, session, attempts, why: 'in-flight', lastTry: mind.stamp() });
   try {
     const st = mind.state();
     let out = null;
@@ -69,6 +72,7 @@ export async function dream({ transcript, session = '', wait = 1500, attempts = 
     const file = apply(st, ep, session);
     ledger[session || `anon-${Date.now()}`] = { when: mind.stamp(), turns: all.length, file };
     mind.writeJson(mind.FILES.dreamt, ledger);
+    dequeue(session, transcript);
     mind.log(`dream: session ${session || '?'} → ${file}${out ? '' : ' (fallback: raw edges kept)'}`);
     return { file, episode: ep, fallback: !out };
   } finally {
@@ -81,13 +85,34 @@ export async function dream({ transcript, session = '', wait = 1500, attempts = 
 let draining = false;
 
 export function pending() { const q = mind.readJson(mind.FILES.pending, []); return Array.isArray(q) ? q : []; }
+const same = (a, b) => (a.session && a.session === b.session) || (!a.session && a.transcript === b.transcript);
 function enqueue(item) {
-  const q = pending().filter((x) => !(x.session && x.session === item.session)); // one entry per session, the latest wins
-  q.push({ ...item, since: item.since || mind.stamp() });
-  mind.writeJson(mind.FILES.pending, q);
+  withQueue(() => {
+    const q = pending().filter((x) => !same(x, item)); // one entry per session, the latest wins
+    q.push({ ...item, since: item.since || mind.stamp() });
+    mind.writeJson(mind.FILES.pending, q);
+  });
+}
+function dequeue(session, transcript) {
+  withQueue(() => mind.writeJson(mind.FILES.pending, pending().filter((x) => !same(x, { session, transcript }))));
+}
+// pending.json is touched by every sleeper at once when sessions close in a burst; a tiny lock keeps
+// their writes from erasing each other (the way three dreamers once erased dreamt.json).
+function withQueue(fn) {
+  const lock = mind.abs(`${mind.FILES.pending}.lock`);
+  const until = Date.now() + 3000;
+  let held = false;
+  while (!held && Date.now() < until) {
+    try { fs.writeFileSync(lock, String(process.pid), { flag: 'wx' }); held = true; } catch {
+      try { if (Date.now() - fs.statSync(lock).mtimeMs > 10000) fs.unlinkSync(lock); } catch { /* gone */ }
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
+    }
+  }
+  try { fn(); } finally { if (held) { try { fs.unlinkSync(lock); } catch { /* fine */ } } }
 }
 function due(item, force) {
   if (force || item.why === 'busy' || !item.lastTry) return true;
+  if (item.why === 'in-flight') return Date.now() - new Date(item.lastTry) > LOCK_STALE_MS; // a dreamer that died mid-dream
   return mind.minutesBetween(item.lastTry) >= RETRY_MINUTES;
 }
 
@@ -99,11 +124,11 @@ export async function drain({ force = false, max = 20 } = {}) {
   try {
     for (let i = 0; i < max; i++) {
       const q = pending();
-      const idx = q.findIndex((x) => due(x, force));
+      const idx = q.findIndex((x) => due(x, force) && !(x.why === 'in-flight' && Date.now() - new Date(x.lastTry) < LOCK_STALE_MS));
       if (idx < 0) break;
-      const [item] = q.splice(idx, 1);
-      mind.writeJson(mind.FILES.pending, q);
+      const item = q[idx];
       const r = await dream({ transcript: item.transcript, session: item.session, wait: 0, attempts: item.attempts || 0 });
+      if (r.skipped) dequeue(item.session, item.transcript); // nothing to dream any more: off the queue
       done.push({ session: item.session, ...r });
       if (r.deferred === 'busy') break; // someone else holds the lock; they will drain when they finish
     }

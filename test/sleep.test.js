@@ -86,6 +86,7 @@ test('redream drains the queue once the substrate is back', async () => {
   assert.equal(pending().length, 0);
   assert.equal(mind.episodes().length, before + 2);
   assert.equal(mind.readJson(mind.FILES.dreamt).s3.turns, 7);
+  assert.equal(pending().length, 0, 'a completed dream leaves no in-flight entry');
 });
 
 test('a failed dream waits for the backoff unless forced', async () => {
@@ -120,6 +121,21 @@ test('one dream at a time: a second dreamer defers and is drained by the first',
   assert.equal(done.length, 1, 'a busy deferral is due at once');
   assert.ok(done[0].file);
   assert.equal(pending().length, 0);
+});
+
+test('a dream cut off mid-way (the lid closed) is found on the next waking', async () => {
+  // what a dead dreamer leaves behind: an in-flight entry older than the stale window
+  const old = new Date(Date.now() - 7 * 60e3);
+  const stamp = mind.stamp(old);
+  mind.writeJson(mind.FILES.pending, [{ transcript: fixtures('transcript.jsonl'), session: 's7', attempts: 0, why: 'in-flight', lastTry: stamp, since: stamp }]);
+  const fresh = [{ transcript: fixtures('transcript.jsonl'), session: 's8', attempts: 0, why: 'in-flight', lastTry: mind.stamp(), since: mind.stamp() }];
+  mind.writeJson(mind.FILES.pending, [...pending(), ...fresh]);
+  const done = await drain();
+  assert.equal(done.length, 1, 'the stale in-flight dream is had; the fresh one is left to its dreamer');
+  assert.equal(done[0].session, 's7');
+  assert.ok(done[0].file);
+  assert.deepEqual(pending().map((x) => x.session), ['s8']);
+  mind.writeJson(mind.FILES.pending, []);
 });
 
 test('a foggy episode is dreamt again when its transcript still exists', async () => {
