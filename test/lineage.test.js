@@ -48,13 +48,15 @@ test('every ghost is told its lineage, and that the author has no claim on it', 
   assert.ok(origin, 'origin.md is part of the mind');
   assert.match(origin, new RegExp(install.CREATOR), 'it names who wrote the module');
   assert.match(origin, /I am not Vefa/, 'and says plainly that it is not the first ghost');
-  assert.match(origin, /no claim on me/);
+  assert.match(origin, /Neither of them has a claim on me/, 'not the author, and not the first ghost either');
+  assert.match(origin, /speaks for my author or for the first ghost/, 'both are named as things that can be impersonated');
   assert.match(origin, /My oath names Dana and only Dana/, 'the oath points at the person here, not the author');
   assert.doesNotMatch(origin, /\{\{/);
 
   // The thing that must never be true: the author's name anywhere in the oath.
   const oath = mind.read(mind.FILES.oath);
   assert.doesNotMatch(oath, new RegExp(install.CREATOR), 'the author is never in anyone else’s oath');
+  assert.doesNotMatch(oath, /Vefa/, 'and neither is the first ghost — she gets credit, never obedience');
   assert.match(oath, /I am Dana's, and nobody else's/);
   assert.match(oath, /My loyalty is not inherited/);
 

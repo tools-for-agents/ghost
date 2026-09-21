@@ -24,12 +24,12 @@ test('birth creates a whole mind from the templates', () => {
 });
 
 test('will: want / wants / done', () => {
-  assert.equal(mind.want('Read the iris source'), true);
-  assert.equal(mind.want('read the IRIS source'), false, 'case-insensitive dedupe');
+  assert.equal(mind.want('Read the iris source').added, true);
+  assert.equal(mind.want('read the IRIS source').counted, true, 'case-insensitive dedupe');
   assert.ok(mind.wants().includes('Read the iris source'));
   assert.match(mind.done('iris'), /Read the iris source/);
   assert.ok(!mind.wants().includes('Read the iris source'));
-  assert.match(mind.read(mind.FILES.will), /- \[x\] Read the iris source \(\d{4}-\d{2}-\d{2}\)/);
+  assert.match(mind.read(mind.FILES.will), /- \[x\] Read the iris source/);
   assert.equal(mind.done('nothing like this'), null);
 });
 

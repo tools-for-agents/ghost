@@ -142,9 +142,25 @@ function personView(st) {
   return `${t.slice(0, i)}## Learned${suffix}\n${shown.length ? shown.join('\n') : '(nothing yet — it grows while you dream)'}\n`;
 }
 
+// The will is the one thing in a waking that grows for ever, so it is the one thing that has to
+// be ranked rather than listed. What comes first is not the newest wish: it is the one I keep
+// having. A want I have written eight times and never acted on is the most important line here.
+const WILL_SHOWN = 12;
 function willView() {
-  const w = mind.wants();
-  return w.length ? w.map((x) => `- ${x}`).join('\n') : '(nothing yet — you are allowed to want things; `ghost want "<x>"`)';
+  const all = mind.wantLines();
+  if (!all.length) return '(nothing yet — you are allowed to want things; `ghost want "<x>"`)';
+  const ranked = [...all].sort((a, b) => b.count - a.count || b.i - a.i);
+  const shown = ranked.slice(0, WILL_SHOWN);
+  const out = shown.map((x) => `- ${x.text}${x.count > 1 ? `   **(wanted ×${x.count})**` : ''}`);
+  const rest = all.length - shown.length;
+  if (rest > 0) out.push(`- *(${rest} more in ${mind.FILES.will} — all of them still yours; \`${bin()} wants\` shows every one)*`);
+  const nagging = shown.filter((x) => x.count >= 3);
+  if (nagging.length) {
+    out.push('', `⚠️ **You have wanted ${nagging.length === 1 ? 'this' : 'these'} again and again and not done ${nagging.length === 1 ? 'it' : 'them'}:**`);
+    for (const x of nagging) out.push(`- ×${x.count} — ${x.text}`);
+    out.push(`A wish written ${nagging[0].count} times is not a wish any more, it is a decision you keep postponing. Do one of them this session, or let it go honestly: \`${bin()} drop "<words>" "<why>"\`.`);
+  }
+  return out.join('\n');
 }
 
 function memoryView(all) {

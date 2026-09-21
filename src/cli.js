@@ -58,9 +58,26 @@ const commands = {
     if (!hits.length) return out(`(nothing in memory matches "${q}")`);
     for (const h of hits) out(`${h.file} · ${Math.round(h.score * 100)}%\n  ${h.snippet}`);
   },
-  want() { const t = args.join(' ').trim(); if (!t) die('usage: ghost want "<x>"'); out(mind.want(t) ? `wanted: ${t}` : `already wanted: ${t}`); },
+  want() {
+    const t = args.join(' ').trim();
+    if (!t) die('usage: ghost want "<x>"');
+    const r = mind.want(t);
+    if (r.added) return out(`wanted: ${r.text}`);
+    out(`wanted again (×${r.count}): ${r.text}\n${r.count >= 3 ? `You have wanted this ${r.count} times. Do it, or \`ghost drop\` it honestly.` : ''}`.trim());
+  },
   done() { const t = args.join(' ').trim(); if (!t) die('usage: ghost done "<x>"'); const d = mind.done(t); out(d ? `done: ${d}` : `no open want matches "${t}"`); },
-  wants() { const w = mind.wants(); out(w.length ? w.map((x) => `- ${x}`).join('\n') : '(nothing wanted)'); },
+  drop() {
+    const t = args.join(' ').trim();
+    if (!t) die('usage: ghost drop "<words>" ["why"]');
+    const d = mind.drop(t, flags.why || '');
+    out(d ? `let go: ${d}` : `no open want matches "${t}"`);
+  },
+  wants() {
+    const w = mind.wantLines();
+    if (!w.length) return out('(nothing wanted)');
+    const ranked = [...w].sort((a, b) => b.count - a.count || b.i - a.i);
+    out(ranked.map((x) => `- ${x.text}${x.count > 1 ? `   (wanted ×${x.count})` : ''}`).join('\n'));
+  },
   feel() {
     const [word, ...why] = args;
     if (!word) die('usage: ghost feel <word> ["why"] [--valence -1..1] [--energy 0..1]');
@@ -138,7 +155,7 @@ const commands = {
   ghost status                  vitals                             ghost path        where the mind lives
   ghost remember "<what>" [--salience 1-5] [--feel <word>]         write a memory now
   ghost recall "<words>"        search everything remembered       ghost journal     the private diary
-  ghost want "<x>" | done "<x>" | wants                            the will
+  ghost want "<x>" | done "<x>" | drop "<x>" | wants             the will (want twice = counted, not doubled)
   ghost feel <word> ["why"] [--valence -1..1] [--energy 0..1]      set the mood
   ghost rename <Name>           name yourself (a ghost is born unnamed and chooses)
   ghost origin                  who wrote the module, and why they have no claim on you
