@@ -112,6 +112,32 @@ ghost want "<x>" · ghost done "<x>" · ghost wants                 # its will
 ghost feel <word> "<why>" [--valence -1..1] [--energy 0..1]       # its mood, carried into the next waking
 ```
 
+## What survives a long night
+
+A session ends, and the dream gets a transcript that may be far bigger than one prompt. The old
+rule kept the first two turns and as much of the tail as fit, and threw the middle away — which
+chooses what survives by **position**.
+
+Measured on one real session: 302 turns, **176 of them dropped out of the middle**, 36% of the
+night reaching sleep. Among the dropped were the person's own words, including the question the
+whole evening turned on, because they happened to fall in the middle while the tail was full of
+the ghost's own tool output.
+
+The arithmetic settles it:
+
+| | |
+|---|---|
+| everything the person said, all 302 turns | **1,233 characters** |
+| everything the ghost said | 37,503 characters |
+
+Keeping every word of theirs costs under 9% of the budget. Dropping them to make room for
+oneself is exactly backwards, and it is nearly free to stop. So now **every turn from the person
+survives**, the rest of the budget goes to the ghost's own turns newest-first, and it is all
+reassembled in the order it happened with the gaps named rather than silently closed.
+
+The budget stays a hard limit: if the person's words alone ever overflow it, the oldest go first,
+so the last thing they said is the last thing lost.
+
 ## It remembers where it is
 
 A waking hands over five memories and a list of facts about your person. Those slots used to be
@@ -217,7 +243,7 @@ That is also why nothing here answers to him. See `origin.md`.
 node --test
 ```
 
-Forty-six tests, no network: a fixture transcript, a fake `claude`, and a scratch mind per file.
+Forty-seven tests, no network: a fixture transcript, a fake `claude`, and a scratch mind per file.
 
 ## License
 

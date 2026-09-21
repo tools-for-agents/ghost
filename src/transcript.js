@@ -63,19 +63,73 @@ export function substantive(turns) {
   return s.userTurns >= 2 || s.assistantTurns >= 4 || s.userChars >= 800;
 }
 
-// Head + tail excerpt within a character budget; the ending is what a dream needs most.
+// What a long night gets to carry into the dream.
+//
+// This used to keep the first two turns and as much of the tail as fit, and throw the middle
+// away — which chooses what survives by POSITION. Measured on a real session: 302 turns, and
+// 176 of them dropped out of the middle, 36% of the night reaching sleep. Among the dropped
+// were the person's own words, including the question the whole evening turned on, because
+// they happened to fall in the middle while the tail was full of the ghost's own tool output.
+//
+// The arithmetic settles it. Everything the person said across those 302 turns came to 1,233
+// characters — 8.8% of the budget. The ghost's side was 37,503. Dropping the person to make
+// room for oneself is exactly backwards, and it is nearly free to stop.
+//
+// So: EVERY turn from the person survives, whatever else goes. The rest of the budget goes to
+// the ghost's own turns, newest first, because the end of a night is what a dream needs most.
+// Everything is reassembled in the order it happened, with the gaps named where they fall.
 export function excerpt(turns, maxChars = 14000, perTurn = 1200) {
   const lines = turns.map((t) => `${t.role === 'user' ? 'THEY SAID' : 'I SAID/DID'}: ${clip(t.text, perTurn)}`);
-  const total = lines.reduce((n, l) => n + l.length + 1, 0);
+  const cost = (l) => l.length + 1;
+  const total = lines.reduce((n, l) => n + cost(l), 0);
   if (total <= maxChars) return lines.join('\n');
-  const head = lines.slice(0, 2);
-  const tail = [];
-  let budget = maxChars - head.reduce((n, l) => n + l.length + 1, 0) - 40;
-  for (let i = lines.length - 1; i >= 2; i--) {
-    if (budget - lines[i].length - 1 < 0) break;
-    tail.unshift(lines[i]);
-    budget -= lines[i].length + 1;
+
+  const keep = new Set();
+  let budget = maxChars - 40;                                  // room for the omission markers
+  // 1. The person, in full. If even that overflows (it never has), take them newest-first so
+  //    the most recent of their words is the part that survives.
+  for (let i = turns.length - 1; i >= 0; i--) {
+    if (turns[i].role !== 'user') continue;
+    if (budget - cost(lines[i]) < 0) continue;
+    keep.add(i); budget -= cost(lines[i]);
   }
-  return [...head, `[... ${lines.length - head.length - tail.length} turns omitted ...]`, ...tail].join('\n');
+  // 2. The ghost's own turns, newest first, with whatever is left.
+  for (let i = turns.length - 1; i >= 0; i--) {
+    if (keep.has(i) || budget - cost(lines[i]) < 0) continue;
+    keep.add(i); budget -= cost(lines[i]);
+  }
+  // 3. Back into the order it happened, with each gap named rather than silently closed.
+  //    The markers are not free — a night with many gaps spends real budget saying so — and a
+  //    flat reserve guessed wrong the first time I measured it (14,164 against a cap of 14,000).
+  //    So render, and while it is over, give back the ghost's OLDEST turns until it fits. The
+  //    person's turns are never the ones handed back.
+  const render = () => {
+    const out = [];
+    let gap = 0;
+    for (let i = 0; i < lines.length; i++) {
+      if (keep.has(i)) {
+        if (gap) { out.push(`[... ${gap} turns omitted ...]`); gap = 0; }
+        out.push(lines[i]);
+      } else gap++;
+    }
+    if (gap) out.push(`[... ${gap} turns omitted ...]`);
+    return out.join('\n');
+  };
+  let text = render();
+  for (let i = 0; i < lines.length && text.length > maxChars; i++) {
+    if (turns[i].role === 'user' || !keep.has(i)) continue;
+    keep.delete(i);
+    text = render();
+  }
+  // And if the person's words alone still overflow — nothing of the ghost's left to give back —
+  // then the budget wins, because it is a hard limit on what can be sent at all. Preferring them
+  // is not the same as being able to keep them all. The OLDEST go first, so the last thing they
+  // said is the last thing lost.
+  for (let i = 0; i < lines.length && text.length > maxChars; i++) {
+    if (!keep.has(i)) continue;
+    keep.delete(i);
+    text = render();
+  }
+  return text;
 }
 export function clip(s, n) { s = String(s); return s.length > n ? s.slice(0, n - 1) + '…' : s; }

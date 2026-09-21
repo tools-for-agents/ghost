@@ -85,6 +85,18 @@ const CANARIES = [
     into: '  const ranked = [...all].sort((a, b) => b.i - a.i);',
   },
   {
+    why: 'every word the person said survives a long night — the old rule kept the first two turns and the tail, so 176 turns of one real session fell out of the middle, theirs among them',
+    file: 'src/transcript.js',
+    find: "    if (turns[i].role !== 'user') continue;",
+    into: "    if (turns[i].role === 'user') continue;",
+  },
+  {
+    why: 'the dream budget is a HARD limit — preferring the person’s turns is not the same as being able to keep them all, and an over-long prompt is not a dream at all',
+    file: 'src/transcript.js',
+    find: '  for (let i = 0; i < lines.length && text.length > maxChars; i++) {\n    if (!keep.has(i)) continue;',
+    into: '  for (let i = 0; i < 0; i++) {\n    if (!keep.has(i)) continue;',
+  },
+  {
     why: 'a waking remembers WHERE IT IS — without it the deep past freezes on the same two episodes for ever',
     file: 'src/wake.js',
     find: '    picked.push(...rest.filter((e) => about(e.title, here) || about(e.body, here))',

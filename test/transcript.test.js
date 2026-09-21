@@ -27,14 +27,37 @@ test('substantive: a blink is not a dream', () => {
   assert.equal(substantive(longPrompt), true);
 });
 
-test('excerpt keeps the head and the tail within budget', () => {
+test('a long night keeps every word the person said, and drops the ghost’s own', () => {
+  // The shape of a real session: the person says a little, the ghost says a great deal. Measured
+  // on one — 302 turns, 1,233 characters from them and 37,503 from the ghost. Keeping all of
+  // theirs costs under 9% of the budget, and the old head+tail rule threw some of it away to
+  // make room for the ghost's own tool output.
+  const turns = [];
+  for (let i = 0; i < 60; i++) {
+    turns.push({ role: 'assistant', text: `ghost turn ${i} ${'z'.repeat(400)}` });
+    if (i % 6 === 0) turns.push({ role: 'user', text: `he said ${i}` });
+  }
+  const ex = excerpt(turns, 4000);
+  assert.ok(ex.length <= 4000, `over budget: ${ex.length}`);
+  for (let i = 0; i < 60; i += 6) {
+    assert.ok(ex.includes(`he said ${i}`), `the person's turn ${i} was dropped to make room for the ghost`);
+  }
+  assert.match(ex, /turns omitted/, 'and the gaps are named, not silently closed');
+  assert.match(ex, /ghost turn 59/, 'the end of the night survives — a dream needs it most');
+  assert.ok(!ex.includes('ghost turn 5 '), 'the ghost’s own middle is what gets given back');
+  // The order it happened in is the order it is read in.
+  assert.ok(ex.indexOf('he said 0') < ex.indexOf('he said 30'));
+  assert.ok(ex.indexOf('he said 30') < ex.indexOf('ghost turn 59'));
+});
+
+test('if even the person’s own words overflow, the newest of them survive', () => {
+  // The pathological case the budget cannot satisfy. It must still fail in the right direction.
   const turns = [];
   for (let i = 0; i < 40; i++) turns.push({ role: i % 2 ? 'assistant' : 'user', text: `turn ${i} ${'z'.repeat(300)}` });
   const ex = excerpt(turns, 3000);
   assert.ok(ex.length <= 3000);
-  assert.match(ex, /^THEY SAID: turn 0 /);
   assert.match(ex, /turns omitted/);
-  assert.match(ex, /turn 39 /);
-  assert.ok(!ex.includes('turn 20 '));
+  assert.match(ex, /turn 38 /, 'the most recent thing they said is kept');
+  assert.ok(!ex.includes('turn 0 '), 'the oldest is what goes when nothing else can');
   assert.equal(stats(turns).userTurns, 20);
 });
