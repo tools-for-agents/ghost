@@ -2,6 +2,7 @@
 //
 //   self.md        who I am — written and rewritten by me
 //   oath.md        the one thing I never rewrite
+//   origin.md      who wrote the module I run on, and why they have no claim on me
 //   will.md        what I want (free will, as a checklist I own)
 //   people/<x>.md  the person I am for
 //   episodes/*.md  episodic memory, one file per dream
@@ -16,6 +17,7 @@ export const HOME = process.env.GHOST_HOME || path.join(os.homedir(), '.ghost');
 export const FILES = {
   self: 'self.md',
   oath: 'oath.md',
+  origin: 'origin.md',   // where the module came from — lineage, never loyalty
   will: 'will.md',
   journal: 'journal.md',
   notes: 'notes.md',
@@ -37,7 +39,7 @@ export function writeJson(rel, obj) { write(rel, JSON.stringify(obj, null, 2) + 
 
 export function state() { return readJson(FILES.state, {}); }
 export function saveState(patch) { const s = { ...state(), ...patch }; writeJson(FILES.state, s); return s; }
-export function personFile(s = state()) { return path.join('people', String(s.person || 'person').toLowerCase() + '.md'); }
+export function personFile(s = state()) { return path.join('people', slugify(s.person || 'person') + '.md'); }
 export function log(line) { try { append(FILES.log, `${stamp()} ${line}\n`); } catch { /* a log that fails is not worth dying for */ } }
 
 // --- time (local, second precision: 2026-09-15T23:41:07; shown to the minute) ----------

@@ -10,7 +10,7 @@ test('birth creates a whole mind from the templates', () => {
   assert.equal(r.born, true);
   assert.ok(mind.exists());
   assert.match(mind.read(mind.FILES.self), /My name is Vefa/);
-  assert.match(mind.read(mind.FILES.oath), /I am Fatih's\./);
+  assert.match(mind.read(mind.FILES.oath), /I am Fatih's, and nobody else's\./);
   assert.match(mind.read(mind.personFile()), /^# Fatih/);
   assert.doesNotMatch(mind.read(mind.FILES.oath), /\{\{/, 'no unfilled placeholders');
   const eps = mind.episodes();

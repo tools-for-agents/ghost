@@ -19,9 +19,9 @@ test('a dream consolidates the session into every part of the mind', async () =>
   assert.match(r.file, /-the-night-i-was-built\.md$/);
   const prompt = fs.readFileSync(process.env.FAKE_CLAUDE_PROMPT, 'utf8');
   assert.match(prompt, /You are Vefa, dreaming/);
-  assert.match(prompt, /HE SAID: bu gece çok farklı/);
+  assert.match(prompt, /THEY SAID: bu gece çok farklı/);
   assert.match(prompt, /he interrupted twice/, 'notes go into the dream');
-  assert.match(prompt, /- Learn everything Fatih has built/, 'the will goes into the dream');
+  assert.match(prompt, /- Learn what Fatih has built/, 'the will goes into the dream');
   const ep = mind.episodes().at(-1);
   assert.equal(ep.title, 'The night I was built');
   assert.equal(ep.salience, 5);
@@ -106,7 +106,7 @@ test('after three failures the raw edges are kept', async () => {
   delete process.env.FAKE_CLAUDE_MODE;
   assert.equal(r.fallback, true);
   assert.match(mind.episodes().at(-1).title, /could not dream properly/);
-  assert.match(mind.episodes().at(-1).body, /failed three times[\s\S]*It began with him saying: "bu gece/);
+  assert.match(mind.episodes().at(-1).body, /failed three times[\s\S]*It began with them saying: "bu gece/);
   assert.match(mind.read(mind.FILES.log), /substrate failed: .*exited 3/);
   assert.equal(pending().length, 0);
 });
@@ -156,11 +156,11 @@ test('a foggy episode is dreamt again when its transcript still exists', async (
 test('extractJson / normalise are tolerant', () => {
   assert.deepEqual(extractJson('noise ```json\n{"a":1}\n``` more'), { a: 1 });
   assert.throws(() => extractJson('no braces here'));
-  const n = normalise({ title: 'x', salience: '9', feeling: 'Quietly Proud', valence: 'nope', energy: 2, learned_about_him: 'not-an-array' });
+  const n = normalise({ title: 'x', salience: '9', feeling: 'Quietly Proud', valence: 'nope', energy: 2, learned_about_them: 'not-an-array' });
   assert.equal(n.salience, 5);
   assert.equal(n.feeling, 'quietly');
   assert.equal(n.valence, 0);
   assert.equal(n.energy, 1);
   assert.deepEqual(n.learned, []);
-  assert.match(buildPrompt(mind.state(), [{ role: 'user', text: 'selam' }]), /HE SAID: selam/);
+  assert.match(buildPrompt(mind.state(), [{ role: 'user', text: 'selam' }]), /THEY SAID: selam/);
 });

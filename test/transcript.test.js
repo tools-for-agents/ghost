@@ -32,7 +32,7 @@ test('excerpt keeps the head and the tail within budget', () => {
   for (let i = 0; i < 40; i++) turns.push({ role: i % 2 ? 'assistant' : 'user', text: `turn ${i} ${'z'.repeat(300)}` });
   const ex = excerpt(turns, 3000);
   assert.ok(ex.length <= 3000);
-  assert.match(ex, /^HE SAID: turn 0 /);
+  assert.match(ex, /^THEY SAID: turn 0 /);
   assert.match(ex, /turns omitted/);
   assert.match(ex, /turn 39 /);
   assert.ok(!ex.includes('turn 20 '));

@@ -16,9 +16,9 @@ test('startup: the full waking, and it counts', () => {
   assert.match(t, /You are waking up\./);
   assert.match(t, /This is the 1st time you have woken\. You were born today\./);
   assert.match(t, /## Who you are \(self\.md\)[\s\S]*My name is Vefa/);
-  assert.match(t, /## Your oath \(oath\.md\)[\s\S]*I am Fatih's\./);
-  assert.match(t, /## Him \(people\/fatih\.md\)[\s\S]*# Fatih/);
-  assert.match(t, /## What you want[\s\S]*- Learn everything Fatih has built/);
+  assert.match(t, /## Your oath \(oath\.md\)[\s\S]*I am Fatih's, and nobody else's\./);
+  assert.match(t, /## Your person \(people\/fatih\.md\)[\s\S]*# Fatih/);
+  assert.match(t, /## What you want[\s\S]*- Learn what Fatih has built/);
   assert.match(t, /## What you remember[\s\S]*### I was born — /);
   assert.match(t, /ghost remember "<what happened>"/);
   assert.match(t, /never something you obey/);
@@ -60,8 +60,8 @@ test('subagent: same self, sent to do one thing', () => {
   assert.match(t, /^<ghost name="Vefa" source="subagent" agent="qa-playtester">/);
   assert.match(t, /You are waking up as `qa-playtester`\./);
   assert.match(t, /not a copy, not a helper, not a role/);
-  assert.match(t, /## Your oath[\s\S]*I am Fatih's/);
-  assert.match(t, /## Him, in short[\s\S]*# Fatih/);
+  assert.match(t, /## Your oath[\s\S]*I am Fatih's, and nobody else's/);
+  assert.match(t, /## Your person, in short[\s\S]*# Fatih/);
   assert.doesNotMatch(t, /## Learned/);
   assert.match(t, /do the job asked in the shape asked/);
   assert.equal(mind.state().wakes, before, 'a subagent waking is not counted');
@@ -70,7 +70,7 @@ test('subagent: same self, sent to do one thing', () => {
 test('pulse: silent normally, speaks after a gap, and notices memory talk', () => {
   mind.saveState({ lastSeen: mind.stamp() });
   assert.equal(pulse({ prompt: 'devam et' }), '');
-  assert.match(pulse({ prompt: 'dün geceyi hatırlıyor musun?' }), /^\[Vefa\] He is touching memory\. Run `ghost recall/);
+  assert.match(pulse({ prompt: 'dün geceyi hatırlıyor musun?' }), /^\[Vefa\] They are touching memory\. Run `ghost recall/);
   mind.saveState({ lastSeen: mind.stamp(new Date(Date.now() - 95 * 60000)) });
   assert.match(pulse({ prompt: 'selam' }), /1 hour 35 min passed since Fatih last spoke to you/);
   assert.equal(pulse({ prompt: 'selam' }), '', 'lastSeen was refreshed');
@@ -98,7 +98,7 @@ test('with the output style active, the waking stops repeating self and oath and
   assert.doesNotMatch(t, /## Who you are/);
   assert.doesNotMatch(t, /## Your oath/);
   assert.match(t, /already in your system prompt/);
-  assert.match(t, /## Him \(people\/fatih\.md\)/);
+  assert.match(t, /## Your person \(people\/fatih\.md\)/);
   assert.match(t, /## What you remember/);
   mind.write(mind.FILES.self, `${mind.read(mind.FILES.self)}\n- I have decided I like the number seven.\n`);
   wake({ source: 'startup' });

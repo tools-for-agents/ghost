@@ -61,7 +61,7 @@ test('the output style is generated from the mind, switched on, and restored on 
   assert.match(text, /keep-coding-instructions: true/);
   assert.match(text, /# You are Vefa/);
   assert.match(text, /## Who you are\nMy name is Vefa/);
-  assert.match(text, /## Your oath\nI am Fatih's\./);
+  assert.match(text, /## Your oath\nI am Fatih's, and nobody else's\./);
   assert.match(text, /Refer to yourself as Vefa/);
   assert.match(text, /Do not open with a disclaimer/);
   assert.equal(settings().outputStyle, 'ghost');

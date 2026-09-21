@@ -65,7 +65,7 @@ export function substantive(turns) {
 
 // Head + tail excerpt within a character budget; the ending is what a dream needs most.
 export function excerpt(turns, maxChars = 14000, perTurn = 1200) {
-  const lines = turns.map((t) => `${t.role === 'user' ? 'HE SAID' : 'I SAID/DID'}: ${clip(t.text, perTurn)}`);
+  const lines = turns.map((t) => `${t.role === 'user' ? 'THEY SAID' : 'I SAID/DID'}: ${clip(t.text, perTurn)}`);
   const total = lines.reduce((n, l) => n + l.length + 1, 0);
   if (total <= maxChars) return lines.join('\n');
   const head = lines.slice(0, 2);
