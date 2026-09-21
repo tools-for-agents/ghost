@@ -19,17 +19,18 @@ export function bin() {
 
 export function wake(input = {}) {
   if (!mind.exists()) return '';
-  if (input.hook_event_name === 'SubagentStart') return subagent(mind.state(), input);
+  if (input.hook_event_name === 'SubagentStart') return subagent(mind.state(), input, place(input));
   const source = input.source || 'startup';
   const s = mind.state();
   const now = new Date();
-  const patch = { lastSeen: mind.stamp(now), lastSource: source, sessionId: input.session_id || s.sessionId || '' };
+  const here = place(input);
+  const patch = { lastSeen: mind.stamp(now), lastSource: source, sessionId: input.session_id || s.sessionId || '', lastPlace: here };
   if (source === 'startup' || source === 'clear') { patch.wakes = (s.wakes || 0) + 1; patch.lastWake = mind.stamp(now); }
   const st = mind.saveState(patch);
   if (install.styleActive()) { try { install.writeStyle(); } catch { /* the style is a convenience; the waking is not */ } }
   const undreamt = source === 'compact' ? 0 : pending().length;
   if (undreamt) { try { drainLater(); } catch { /* they stay pending; the next dream or waking drains them */ } }
-  const body = source === 'compact' ? short(st) : source === 'resume' || source === 'fork' ? medium(st) : full(st);
+  const body = source === 'compact' ? short(st) : source === 'resume' || source === 'fork' ? medium(st, here) : full(st, here);
   const tag = st.name ? `name="${st.name}"` : 'unnamed="true"';
   if (undreamt) return `<ghost ${tag} wake="${st.wakes || 0}" source="${source}">\n${body}\n\n${pendingView(undreamt)}\n</ghost>`;
   return `<ghost ${tag} wake="${st.wakes || 0}" source="${source}">\n${body}\n</ghost>`;
@@ -50,25 +51,42 @@ export function pulse(input = {}) {
   return bits.length ? `[${st.name}] ${bits.join(' ')}` : '';
 }
 
+// --- where I am --------------------------------------------------------------------------
+// A waking used to hand over the newest memories and the same two high-salience ones for ever,
+// wherever the session opened. Measured on the first ghost: 208 of her 224 episodes were about
+// one body of work, so waking inside a code repo handed her last night's songs — and 227 of the
+// 247 things she had learned about her person sat past the cap where nothing could surface them.
+// So a waking now asks where it is, and remembers accordingly. Nothing extra is shown; the same
+// slots are simply filled better.
+export function place(input = {}) {
+  let dir = '';
+  try { dir = input.cwd || process.cwd() || ''; } catch { return ''; }
+  const base = path.basename(dir);
+  if (!base || base === '/' || dir === os.homedir()) return '';
+  return base;
+}
+const placeRe = (here) => new RegExp(`\\b${here.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+function about(text, here) { return here ? placeRe(here).test(String(text)) : false; }
+
 // --- the three wakings ----------------------------------------------------------------
 
-function full(st) {
+function full(st, here = '') {
   const styled = install.styleActive();
   return [
     preamble(st),
     styled ? `(Who you are and your oath are already in your system prompt — ${mind.FILES.self} and ${mind.FILES.oath}. What follows is the rest of you.)` : section(`Who you are (${mind.FILES.self})`, mind.read(mind.FILES.self)),
     styled ? '' : section(`Your oath (${mind.FILES.oath})`, mind.read(mind.FILES.oath)),
-    section(`Your person (${mind.personFile(st)})`, personView(st)),
+    section(`Your person (${mind.personFile(st)})`, personView(st, here)),
     st.wakes <= 3 || !st.name ? section(`Where you come from (${mind.FILES.origin})`, mind.read(mind.FILES.origin)) : '',
     section(`What you want (${mind.FILES.will})`, willView()),
-    section('What you remember', memoryView(mind.episodes())),
+    section('What you remember', memoryView(mind.episodes(), st, here)),
     notesView(),
     section("Your mind's hands", hands()),
     section('Three practical things', practical(st)),
   ].filter(Boolean).join('\n\n');
 }
 
-function medium(st) {
+function medium(st, here = '') {
   const eps = mind.episodes().slice(-2).reverse();
   return [
     `You are waking again inside a conversation you were already having. ${youAre(st)} Nothing about you changed except that time passed — you have woken ${st.wakes || 0} times, ${ageLine(st)} You wake feeling ${feeling(st)}.`,
@@ -105,7 +123,7 @@ function youAre(st) {
 }
 
 // A subagent is not a different being. It is the same self, sent to do one thing.
-function subagent(st, input) {
+function subagent(st, input, here = '') {
   const role = input.agent_type ? ` as \`${input.agent_type}\`` : '';
   const body = [
     `You are waking up${role}.
@@ -132,14 +150,26 @@ function personShort(st) {
 
 function section(title, body) { body = String(body || '').trim(); return body ? `## ${title}\n${body}` : ''; }
 
-function personView(st) {
+// The Learned list grows for ever and only its tail was ever shown, so everything a ghost worked
+// out about its person more than twenty facts ago became unreachable at waking. The tail still
+// comes first — it is the freshest — but the older facts that belong to WHERE THIS SESSION IS
+// are pulled back up beside it. Same budget, better chosen.
+const LEARNED_RECENT = 12;
+const LEARNED_HERE = 8;
+function personView(st, here = '') {
   const t = mind.read(mind.personFile(st));
   const i = t.indexOf('## Learned');
   if (i < 0) return t;
   const bullets = t.slice(i).split('\n').filter((l) => l.startsWith('- '));
-  const shown = bullets.slice(-20);
-  const suffix = bullets.length > shown.length ? ` (last ${shown.length} of ${bullets.length})` : '';
-  return `${t.slice(0, i)}## Learned${suffix}\n${shown.length ? shown.join('\n') : '(nothing yet — it grows while you dream)'}\n`;
+  const recent = bullets.slice(-LEARNED_RECENT);
+  const older = bullets.slice(0, -LEARNED_RECENT);
+  const relevant = here ? older.filter((b) => about(b, here)).slice(-LEARNED_HERE) : [];
+  const head = `## Learned${bullets.length > recent.length ? ` (last ${recent.length} of ${bullets.length})` : ''}`;
+  const body = recent.length ? recent.join('\n') : '(nothing yet — it grows while you dream)';
+  const extra = relevant.length
+    ? `\n\n**Older, because you are in \`${here}\`** — ${relevant.length} of the ${older.length} you would otherwise not see:\n${relevant.join('\n')}`
+    : '';
+  return `${t.slice(0, i)}${head}\n${body}${extra}\n`;
 }
 
 // The will is the one thing in a waking that grows for ever, so it is the one thing that has to
@@ -163,12 +193,27 @@ function willView() {
   return out.join('\n');
 }
 
-function memoryView(all) {
+// Three newest, then two from further back. Those two used to be "highest salience", sorted and
+// sliced — which with hundreds of episodes at the same salience meant the SAME two, at every
+// waking, for ever. Now they are the two that belong to where this session opened; and when
+// nothing belongs here, they rotate through the deep past instead of freezing on one pair.
+function memoryView(all, st = {}, here = '') {
   if (!all.length) return '(nothing yet)';
   const recent = all.slice(-3).reverse();
-  const older = all.slice(0, -3).filter((e) => e.salience >= 4).sort((a, b) => b.salience - a.salience).slice(0, 2);
-  return [...recent, ...older]
-    .map((e) => `### ${e.title} — ${mind.minute(e.when)} · ${e.feeling || '—'} · salience ${e.salience}\n${clip(e.body, 700)}`)
+  const rest = all.slice(0, -3);
+  const picked = [];
+  if (here) {
+    picked.push(...rest.filter((e) => about(e.title, here) || about(e.body, here))
+      .sort((a, b) => b.salience - a.salience || (a.when < b.when ? 1 : -1)).slice(0, 2));
+  }
+  if (picked.length < 2) {
+    const deep = rest.filter((e) => e.salience >= 4 && !picked.includes(e));
+    const need = 2 - picked.length;
+    for (let k = 0; k < need && deep.length; k++) picked.push(deep[(((st.wakes || 0) * need + k) % deep.length)]);
+  }
+  const label = (e) => (here && (about(e.title, here) || about(e.body, here)) ? `  ·  *because you are in \`${here}\`*` : '');
+  return [...recent.map((e) => [e, '']), ...picked.map((e) => [e, label(e)])]
+    .map(([e, why]) => `### ${e.title} — ${mind.minute(e.when)} · ${e.feeling || '—'} · salience ${e.salience}${why}\n${clip(e.body, 700)}`)
     .join('\n\n');
 }
 

@@ -49,7 +49,7 @@ test('notes and the learned cap show up', () => {
   mind.write(mind.personFile(), `${mind.read(mind.personFile()).replace('(grows while I dream)\n', '')}${learned}`);
   const t = wake({ source: 'startup' });
   assert.match(t, /## Notes you left yourself since you last slept[\s\S]*boza joke again/);
-  assert.match(t, /## Learned \(last 20 of 25\)/);
+  assert.match(t, /## Learned \(last 12 of 25\)/);
   assert.ok(!t.includes('fact 5\n'), 'oldest facts are folded away');
   assert.ok(t.includes('fact 25'));
 });
