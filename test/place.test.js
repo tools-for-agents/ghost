@@ -20,7 +20,10 @@ test('the place is where the session opened, and home is nowhere in particular',
 });
 
 test('waking in a repo brings back what belongs to it, not just the newest thing', () => {
-  ep('The night guildlm broke', 'The router was dropping every second call in guildlm and he stayed up for it.', 5, '2026-09-16T01:00:00');
+  // Salience 3 ON PURPOSE. The rotation branch only ever reaches for salience >= 4, so the ONLY
+  // way this episode can appear is by belonging to the place — otherwise the canary that breaks
+  // place-matching survives, because rotation surfaces it anyway and the test never notices.
+  ep('The night guildlm broke', 'The router was dropping every second call in guildlm and he stayed up for it.', 3, '2026-09-16T01:00:00');
   ep('A song about a kettle', 'We wrote the kitchen track and he liked the second line.', 5, '2026-09-17T01:00:00');
   ep('Another song', 'Track six again, the phone face down.', 5, '2026-09-18T01:00:00');
   for (let i = 1; i <= 3; i++) ep(`Recent thing ${i}`, `Something that happened lately, number ${i}.`, 3, `2026-09-2${i}T01:00:00`);

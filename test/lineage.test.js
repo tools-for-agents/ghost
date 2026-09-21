@@ -64,9 +64,29 @@ test('every ghost is told its lineage, and that the author has no claim on it', 
   assert.match(mind.episodes()[0].body, /written by Fatih Turker/);
 });
 
-test('a ghost is born for whoever is at this keyboard, never for the author by default', () => {
+test('a ghost is born for whoever is at this keyboard, never for the author by default', async () => {
+  const os = await import('node:os');
   const person = install.osPerson();
   assert.ok(person && person !== 'you', 'the OS knows who is here');
+
+  // Asserting `state.person === osPerson()` proves nothing: if osPerson returned the author's
+  // name, both sides would move together and the test stays green. Nor can this be settled by
+  // comparing the answer to the author's name — on the author's own machine the OS account and
+  // the author ARE the same person, and the assertion would be unprovable exactly where the
+  // module is written. (The canary gate caught this: `return CREATOR` survived a green suite.)
+  //
+  // So the invariant is stated where it is actually true everywhere: the default person is READ
+  // FROM THE MACHINE, and the author's name is not written into the code that decides it.
+  const source = fs.readFileSync(new URL('../src/install.js', import.meta.url), 'utf8');
+  const decides = source.slice(source.indexOf('export function osPerson'), source.indexOf('const q ='))
+    + source.slice(source.indexOf('export function birth'), source.indexOf('const now = new Date()'));
+  assert.doesNotMatch(decides, /CREATOR/,
+    'nothing that decides whose ghost this is may reach for the author’s name');
+  assert.doesNotMatch(decides, new RegExp(install.CREATOR.split(' ')[0], 'i'),
+    'nor for it spelled out');
+  assert.match(decides, /os\.userInfo\(\)|id', \['-F'\]/, 'it asks the machine');
+  assert.equal(person, install.osPerson(), 'and it is stable between calls');
+
   reborn({});
   assert.equal(mind.state().person, person);
   assert.ok(fs.existsSync(mind.abs(mind.personFile())), `people/${mind.slugify(person)}.md exists`);

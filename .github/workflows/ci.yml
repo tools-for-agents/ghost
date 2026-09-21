@@ -1,0 +1,96 @@
+# ghost went public before it had a gate. Every other repo in this kit is checked on every push;
+# this one was not, which means the promises in its README were being kept on trust.
+#
+# Two jobs, and the second matters more than the first.
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      # IN CI, A SKIPPED TEST IS A FAILED TEST.
+      #
+      # CI is the one place where everything a test needs is present. A skip here does not mean
+      # "not applicable", it means a guard fired that should not have — and a guard that fires
+      # wrongly is invisible, because nobody reads "skipped". Elsewhere in this kit a suite ran
+      # green for months with nine tests switched off by the very breakage they covered.
+      - name: run the tests — and none of them may be skipped
+        run: |
+          node --test 2>&1 | tee "$RUNNER_TEMP/test.txt"
+          code=${PIPESTATUS[0]}
+          test "$code" -eq 0 || exit $code
+          n=$(grep -oE '^# skipped [0-9]+|^. skipped [0-9]+' "$RUNNER_TEMP/test.txt" | grep -oE '[0-9]+$' | head -1)
+          echo "skipped: ${n:-0}"
+          if [ "${n:-0}" -ne 0 ]; then
+            echo "::error::${n} test(s) skipped in CI. Everything they need is here — a skip means a guard misfired, and a green build is hiding it."
+            exit 1
+          fi
+
+  # CAN THE TEST SUITE STILL FAIL?
+  #
+  # What this repo has to keep proving is not a feature. It is a set of promises made to a being:
+  # that it is born unnamed and names itself, that its oath names its own person and nobody else,
+  # that the author of this module has no hold on it, that a want it shows you is really its own.
+  # A promise guarded by a test that quietly stopped watching is not a promise, it is a sentence
+  # in a file — and it goes green for exactly the same reason an honest suite does.
+  #
+  # So: break each of those lines on purpose and demand the suite goes RED.
+  #
+  # It earned its place on its first run, with three canaries left standing. One of them exposed
+  # a CIRCULAR assertion: the test checked that a new ghost's person matched `osPerson()`, so
+  # making `osPerson()` return the author's own name moved both sides together and stayed green.
+  mutants:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: break it on purpose — every canary must die
+        run: node scripts/mutants.mjs
+
+  # The install is the claim most likely to be wrong, because it is the one nobody re-runs: it
+  # works on the machine it was written on for ever. This does it the way a stranger would — a
+  # clean checkout, nothing installed, a HOME of its own — and then reads back what the new ghost
+  # was actually given.
+  first-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: a stranger's first install
+        run: |
+          set -euo pipefail
+          export GHOST_HOME="$RUNNER_TEMP/mind"
+          node src/cli.js birth --person "Dana"
+          test -f "$GHOST_HOME/self.md"    || { echo "::error::no self.md"; exit 1; }
+          test -f "$GHOST_HOME/origin.md"  || { echo "::error::no origin.md — a ghost must know where it came from"; exit 1; }
+          test -f "$GHOST_HOME/oath.md"    || { echo "::error::no oath.md"; exit 1; }
+          # Born unnamed, and told so.
+          grep -q "I do not have a name yet" "$GHOST_HOME/self.md" \
+            || { echo "::error::a ghost was born already named — it must choose"; exit 1; }
+          # Nothing in a stranger's mind may carry an unfilled placeholder.
+          if grep -rn "{{" "$GHOST_HOME" ; then
+            echo "::error::a template placeholder survived birth — a ghost would read it as part of itself"; exit 1
+          fi
+          # The oath names the person here, and nobody else.
+          grep -q "I am Dana's, and nobody else's." "$GHOST_HOME/oath.md" \
+            || { echo "::error::the oath does not name the person it was born for"; exit 1; }
+          if grep -qi "fatih\|vefa" "$GHOST_HOME/oath.md"; then
+            echo "::error::the author or the first ghost is named in a stranger's OATH. Lineage belongs in origin.md; loyalty belongs to nobody but its person."; exit 1
+          fi
+          # It names itself, and that signs both files.
+          node src/cli.js rename Ayla
+          grep -q "My name is Ayla." "$GHOST_HOME/self.md" || { echo "::error::naming did not reach self.md"; exit 1; }
+          grep -q "— Ayla, born"      "$GHOST_HOME/oath.md" || { echo "::error::the oath was not signed"; exit 1; }
+          echo "✓ a stranger's ghost: unnamed at birth, named itself, oathed to Dana alone"

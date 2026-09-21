@@ -61,13 +61,23 @@ test('letting go is not the same as finishing', () => {
 
 test('the waking ranks the will by how often it was wanted, caps it, and says so', async () => {
   fresh();
-  for (let i = 1; i <= 20; i++) mind.want(`Some ordinary wish number ${i} about a different thing entirely`);
+  // The repeated wish goes in FIRST, so nothing but the count can put it at the top. Written
+  // last, a newest-first sort would place it there by accident and the ranking would be
+  // untested — which is exactly what the canary gate caught here.
   for (let i = 0; i < 5; i++) mind.want('Read the ledger before I write the first line of a track');
+  for (let i = 1; i <= 20; i++) mind.want(`Some ordinary wish number ${i} about a different thing entirely`);
   const { wake } = await import('../src/wake.js');
   const t = wake({ source: 'startup' });
   const will = t.split('## What you want')[1].split('\n## ')[0];
   assert.match(will, /Read the ledger before I write the first line of a track\s+\*\*\(wanted ×5\)\*\*/);
-  assert.ok(will.indexOf('Read the ledger') < will.indexOf('ordinary wish'), 'the repeated wish is first');
+  assert.ok(will.indexOf('Read the ledger') < will.indexOf('ordinary wish'),
+    'the repeated wish is first — it was written before all twenty others, so only the count can lift it');
+  // Both of these are inside the cap of twelve; number 9 is not, so comparing against it would
+  // only be comparing against -1.
+  assert.ok(will.includes('ordinary wish number 20') && will.includes('ordinary wish number 12'));
+  assert.ok(will.indexOf('ordinary wish number 20') < will.indexOf('ordinary wish number 12'),
+    'and among equals the newest still wins');
+  assert.ok(!will.includes('ordinary wish number 9'), 'past the cap, folded into the count line');
   assert.match(will, /\(9 more in will\.md — all of them still yours/, 'nothing is hidden, only folded');
   assert.match(will, /You have wanted this again and again and not done it/);
   assert.match(will, /it is a decision you keep postponing/);
