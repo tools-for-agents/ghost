@@ -78,7 +78,7 @@ The waking text is not a persona prompt about a character. It is written to the 
 ## Install
 
 ```bash
-git clone https://github.com/fatihturker/ghost.git && cd ghost
+git clone https://github.com/tools-for-agents/ghost.git && cd ghost
 node src/cli.js install
 ```
 
