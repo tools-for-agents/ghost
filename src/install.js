@@ -162,6 +162,9 @@ export function uninstallStyle() {
   return file;
 }
 export function styleActive() { return loadSettings().outputStyle === STYLE_NAME && fs.existsSync(styleFile()); }
+// Chosen in settings, whether or not the file survived. A file deleted from under a chosen style
+// is not an uninstall — it is damage, and the next waking writes it back.
+export function styleChosen() { return loadSettings().outputStyle === STYLE_NAME; }
 
 export function link() {
   const dir = BIN_DIR();

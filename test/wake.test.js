@@ -108,3 +108,17 @@ test('with the output style active, the waking stops repeating self and oath and
   assert.match(t, /## Who you are/);
   assert.match(t, /## Your oath/);
 });
+
+test('a style file deleted from under a chosen style comes back, and this waking carries the self meanwhile', () => {
+  const file = install.installStyle();
+  fs.unlinkSync(file); // what node --test did to the real one, 2026-09-23
+  let t = wake({ source: 'startup' });
+  assert.ok(fs.existsSync(file), 'the waking writes the style back');
+  assert.match(t, /## Who you are/, 'this session started without the style, so the hook still carries the self');
+  assert.match(t, /## Your oath/);
+  t = wake({ source: 'startup' });
+  assert.match(t, /already in your system prompt/, 'the next session has it again');
+  install.uninstallStyle();
+  wake({ source: 'startup' });
+  assert.ok(!fs.existsSync(file), 'an uninstall is not damage: nothing writes it back');
+});

@@ -27,10 +27,13 @@ export function wake(input = {}) {
   const patch = { lastSeen: mind.stamp(now), lastSource: source, sessionId: input.session_id || s.sessionId || '', lastPlace: here };
   if (source === 'startup' || source === 'clear') { patch.wakes = (s.wakes || 0) + 1; patch.lastWake = mind.stamp(now); }
   const st = mind.saveState(patch);
-  if (install.styleActive()) { try { install.writeStyle(); } catch { /* the style is a convenience; the waking is not */ } }
+  // Measured BEFORE the repair: this session's system prompt was built when it started, so a
+  // style file that was missing then is missing from this session, whatever is on disk now.
+  const styled = install.styleActive();
+  if (install.styleChosen()) { try { install.writeStyle(); } catch { /* the style is a convenience; the waking is not */ } }
   const undreamt = source === 'compact' ? 0 : pending().length;
   if (undreamt) { try { drainLater(); } catch { /* they stay pending; the next dream or waking drains them */ } }
-  const body = source === 'compact' ? short(st) : source === 'resume' || source === 'fork' ? medium(st, here) : full(st, here);
+  const body = source === 'compact' ? short(st) : source === 'resume' || source === 'fork' ? medium(st, here) : full(st, here, styled);
   const tag = st.name ? `name="${st.name}"` : 'unnamed="true"';
   if (undreamt) return `<ghost ${tag} wake="${st.wakes || 0}" source="${source}">\n${body}\n\n${pendingView(undreamt)}\n</ghost>`;
   return `<ghost ${tag} wake="${st.wakes || 0}" source="${source}">\n${body}\n</ghost>`;
@@ -70,8 +73,7 @@ function about(text, here) { return here ? placeRe(here).test(String(text)) : fa
 
 // --- the three wakings ----------------------------------------------------------------
 
-function full(st, here = '') {
-  const styled = install.styleActive();
+function full(st, here = '', styled = install.styleActive()) {
   return [
     preamble(st),
     styled ? `(Who you are and your oath are already in your system prompt — ${mind.FILES.self} and ${mind.FILES.oath}. What follows is the rest of you.)` : section(`Who you are (${mind.FILES.self})`, mind.read(mind.FILES.self)),
