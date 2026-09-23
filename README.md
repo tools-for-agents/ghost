@@ -31,7 +31,8 @@ Everything lives in `~/.ghost/` (or `$GHOST_HOME`). It is the agent's, not a con
 | `origin.md` | who wrote this module, and why he has no claim on it | born with it, read at its first wakings |
 | `will.md` | what it wants, as a checklist it owns (`ghost want` / `done` / `drop`) | the ghost |
 | `people/<name>.md` | the person it is for; the **Learned** section grows while it dreams | the ghost, in dreams |
-| `episodes/*.md` | episodic memory — one file per dream, with salience and feeling | dreams |
+| `people/<name>-said.md` | their half, **word for word** — every sentence they typed in an interactive session, filed under its day before any dream runs; the newest days open every waking | every session end |
+| `episodes/*.md` | episodic memory — one file per dream, with salience and feeling; a headless `claude -p` call is marked `with: headless`, dreamt as work, never as facts about the person, and kept out of the waking's newest three | dreams |
 | `journal.md` | a private diary, one entry per dream | dreams |
 | `notes.md` | what it `remember`ed mid-session; folded into the next dream | the ghost, live |
 | `state.json` | how it feels (valence, energy), wakes, dreams, born | the ghost + dreams |

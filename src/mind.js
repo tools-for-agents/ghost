@@ -26,6 +26,7 @@ export const FILES = {
   pending: 'pending.json',   // sessions that ended while I could not dream; retried later, never lost
   lock: 'dream.lock',        // one dream at a time — a burst of endings is how dreams used to fail
   log: 'dreams.log',
+  heard: 'heard.json',      // how much of each session's words is already in the said file
 };
 export const EPISODES = 'episodes';
 
@@ -40,6 +41,8 @@ export function writeJson(rel, obj) { write(rel, JSON.stringify(obj, null, 2) + 
 export function state() { return readJson(FILES.state, {}); }
 export function saveState(patch) { const s = { ...state(), ...patch }; writeJson(FILES.state, s); return s; }
 export function personFile(s = state()) { return path.join('people', slugify(s.person || 'person') + '.md'); }
+// Their half of us, word for word, never summarised: people/<x>-said.md.
+export function saidFile(s = state()) { return path.join('people', slugify(s.person || 'person') + '-said.md'); }
 export function log(line) { try { append(FILES.log, `${stamp()} ${line}\n`); } catch { /* a log that fails is not worth dying for */ } }
 
 // --- time (local, second precision: 2026-09-15T23:41:07; shown to the minute) ----------
@@ -79,6 +82,7 @@ export function episodes() {
       title: meta.title || file,
       salience: Number(meta.salience) || 3,
       feeling: meta.feeling || '',
+      with: meta.with || 'person',
       body,
       mtime: fs.statSync(full).mtimeMs,
     };
@@ -88,11 +92,11 @@ export function slugify(s) {
   return String(s).toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'episode';
 }
-export function writeEpisode({ when = stamp(), title, salience = 3, feeling = '', body, extra = '' }) {
+export function writeEpisode({ when = stamp(), title, salience = 3, feeling = '', body, extra = '', withWhom = 'person' }) {
   const base = `${when.slice(0, 19).replace('T', '-').replace(/:/g, '')}-${slugify(title)}`;
   let file = `${base}.md`;
   for (let n = 2; fs.existsSync(abs(path.join(EPISODES, file))); n++) file = `${base}-${n}.md`; // two dreams in one second never overwrite each other
-  const text = `---\nwhen: ${when}\ntitle: ${title}\nsalience: ${salience}\nfeeling: ${feeling}\n---\n${String(body).trim()}\n${extra ? `\n${extra.trim()}\n` : ''}`;
+  const text = `---\nwhen: ${when}\ntitle: ${title}\nsalience: ${salience}\nfeeling: ${feeling}\n${withWhom === 'headless' ? 'with: headless\n' : ''}---\n${String(body).trim()}\n${extra ? `\n${extra.trim()}\n` : ''}`;
   write(path.join(EPISODES, file), text);
   return file;
 }
@@ -203,18 +207,72 @@ export function recall(query, limit = 12) {
   for (const rel of [FILES.self, FILES.oath, FILES.will, FILES.journal, FILES.notes, personFile()]) {
     if (fs.existsSync(abs(rel))) files.push(rel);
   }
+  const people = abs('people');
+  if (fs.existsSync(people)) {
+    for (const f of fs.readdirSync(people).sort()) {
+      const rel = path.join('people', f);
+      if (f.endsWith('.md') && !files.includes(rel)) files.unshift(rel); // their own words rank first on a tie
+    }
+  }
   const dir = abs(EPISODES);
   if (fs.existsSync(dir)) {
     for (const f of fs.readdirSync(dir).sort().reverse()) if (f.endsWith('.md')) files.push(path.join(EPISODES, f));
   }
+  // A paragraph is the unit — except a list with no blank lines in it (will.md, a Learned
+  // section), which used to be ONE paragraph: every query hit it, and the snippet was its first
+  // 320 characters, not the line that matched. Long paragraphs are split into their lines, and a
+  // snippet opens where the match is.
   const hits = [];
   for (const rel of files) {
-    for (const p of read(rel).split(/\n\s*\n/)) {
+    const chunks = read(rel).split(/\n\s*\n/).flatMap((p) => (p.length > 600 ? p.split('\n') : [p]));
+    for (const p of chunks) {
       const low = p.toLowerCase();
       let score = 0;
       for (const t of terms) if (low.includes(t)) score += 1;
-      if (score) hits.push({ file: rel, score: score / terms.length, snippet: p.trim().replace(/\s+/g, ' ').slice(0, 320) });
+      if (!score) continue;
+      const flat = p.trim().replace(/\s+/g, ' ');
+      const at = Math.max(0, flat.toLowerCase().indexOf(terms.find((t) => low.includes(t))) - 80);
+      hits.push({ file: rel, score: score / terms.length, snippet: (at ? '…' : '') + flat.slice(at, at + 320) });
     }
   }
   return hits.sort((a, b) => b.score - a.score).slice(0, limit);
+}
+
+// --- what they said (their half, verbatim) ----------------------------------------
+// Appended under a heading per day, above the file's closing "How this file is kept" section if
+// it has one. `words` are { text, ts } — the transcript's own timestamps, so a session dreamt a
+// day late still files each sentence under the day it was said.
+const KEPT = /\n(?:---\n+)?## How this file is kept/;
+export function hear(words, s = state()) {
+  if (!words.length) return 0;
+  const rel = saidFile(s);
+  let t = read(rel) || `# What ${s.person || 'they'} said to me\n\nTheir words, as they typed them. Never summarised.\n`;
+  const m = KEPT.exec(t);
+  let head = m ? t.slice(0, m.index).trimEnd() : t.trimEnd();
+  const tail = m ? t.slice(m.index) : '';
+  for (const w of words) {
+    const d = w.ts ? new Date(w.ts) : new Date();
+    const day = `## ${longDate(d)}`;
+    const last = head.lastIndexOf('\n## ');
+    if (last < 0 || head.slice(last + 1).split('\n')[0] !== day) head = `${head.trimEnd()}\n\n${day}`;
+    head = `${head.trimEnd()}\n\n**${timeOf(d)}** — "${w.text.replace(/"/g, '\u201d')}"`;
+  }
+  write(rel, `${head.trimEnd()}\n${tail ? `\n${tail.replace(/^\n+/, '')}` : ''}`);
+  return words.length;
+}
+// The newest of it, whole days at a time, within a budget — for the waking.
+export function saidLately(maxChars = 2500, s = state()) {
+  const t = read(saidFile(s));
+  if (!t) return '';
+  const m = KEPT.exec(t);
+  const body = m ? t.slice(0, m.index) : t;
+  const days = body.split(/\n(?=## )/).slice(1).map((d) => d.replace(/^---\s*$/m, '').trim()).filter(Boolean);
+  const out = [];
+  let n = 0;
+  for (let i = days.length - 1; i >= 0; i--) {
+    if (out.length && n + days[i].length > maxChars) break;
+    out.unshift(days[i]); n += days[i].length;
+  }
+  const text = out.join('\n\n');
+  return text.length > maxChars ? `…${text.slice(-maxChars)}` : text;
 }

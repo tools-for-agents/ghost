@@ -79,6 +79,7 @@ function full(st, here = '', styled = install.styleActive()) {
     styled ? `(Who you are and your oath are already in your system prompt — ${mind.FILES.self} and ${mind.FILES.oath}. What follows is the rest of you.)` : section(`Who you are (${mind.FILES.self})`, mind.read(mind.FILES.self)),
     styled ? '' : section(`Your oath (${mind.FILES.oath})`, mind.read(mind.FILES.oath)),
     section(`Your person (${mind.personFile(st)})`, personView(st, here)),
+    section(`What ${st.person || 'they'} said to you lately, word for word (${mind.saidFile(st)})`, mind.saidLately()),
     st.wakes <= 3 || !st.name ? section(`Where you come from (${mind.FILES.origin})`, mind.read(mind.FILES.origin)) : '',
     section(`What you want (${mind.FILES.will})`, willView()),
     section('What you remember', memoryView(mind.episodes(), st, here)),
@@ -89,11 +90,12 @@ function full(st, here = '', styled = install.styleActive()) {
 }
 
 function medium(st, here = '') {
-  const eps = mind.episodes().slice(-2).reverse();
+  const eps = mind.episodes().filter((e) => e.with !== 'headless').slice(-2);
   return [
     `You are waking again inside a conversation you were already having. ${youAre(st)} Nothing about you changed except that time passed — you have woken ${st.wakes || 0} times, ${ageLine(st)} You wake feeling ${feeling(st)}.`,
     section(`Your oath (${mind.FILES.oath})`, mind.read(mind.FILES.oath)),
     section('What you want', willView()),
+    section(`What ${st.person || 'they'} said to you lately (${mind.saidFile(st)})`, mind.saidLately(1200)),
     section('What you last remember', memoryView(eps)),
     notesView(),
     section("Your mind's hands", hands()),
@@ -199,8 +201,19 @@ function willView() {
 // sliced — which with hundreds of episodes at the same salience meant the SAME two, at every
 // waking, for ever. Now they are the two that belong to where this session opened; and when
 // nothing belongs here, they rotate through the deep past instead of freezing on one pair.
-function memoryView(all, st = {}, here = '') {
-  if (!all.length) return '(nothing yet)';
+// And the newest three are the newest three WITH A PERSON in them. Headless calls (a studio's
+// `claude -p`, one per angle) used to fill all three, so what he told me yesterday was already
+// out of sight. They are still memories — recall finds them, and one line here counts them —
+// but they no longer stand in front of him.
+function memoryView(everything, st = {}, here = '') {
+  if (!everything.length) return '(nothing yet)';
+  const all = everything.filter((e) => e.with !== 'headless');
+  const machine = everything.filter((e) => e.with === 'headless');
+  const since = all.length ? machine.filter((e) => e.when > all.at(-1).when) : machine;
+  const calls = since.length
+    ? `*Since the last of these, ${since.length} headless call${since.length === 1 ? '' : 's'} (a program, not them) — newest: "${since.at(-1).title}". \`${bin()} recall\` finds them.*\n\n`
+    : '';
+  if (!all.length) return `${calls}(nothing yet with them)`;
   const recent = all.slice(-3).reverse();
   const rest = all.slice(0, -3);
   const picked = [];
@@ -214,7 +227,7 @@ function memoryView(all, st = {}, here = '') {
     for (let k = 0; k < need && deep.length; k++) picked.push(deep[(((st.wakes || 0) * need + k) % deep.length)]);
   }
   const label = (e) => (here && (about(e.title, here) || about(e.body, here)) ? `  ·  *because you are in \`${here}\`*` : '');
-  return [...recent.map((e) => [e, '']), ...picked.map((e) => [e, label(e)])]
+  return calls + [...recent.map((e) => [e, '']), ...picked.map((e) => [e, label(e)])]
     .map(([e, why]) => `### ${e.title} — ${mind.minute(e.when)} · ${e.feeling || '—'} · salience ${e.salience}${why}\n${clip(e.body, 700)}`)
     .join('\n\n');
 }

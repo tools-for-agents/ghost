@@ -133,3 +133,38 @@ export function excerpt(turns, maxChars = 14000, perTurn = 1200) {
   return text;
 }
 export function clip(s, n) { s = String(s); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+
+// Who started this session: a person at a keyboard, or a program calling `claude -p`.
+//
+// Measured on 2026-09-23: of the last forty episodes, twenty-four were a songwriting studio
+// calling me headless, one call per angle, per critique, per title. Each was dreamt exactly like
+// a night with him — so the three newest episodes at every waking were the studio's, and what he
+// told me on a Tuesday was three hours deep in machine calls by Wednesday. The transcript says
+// which it was: an interactive session is `"entrypoint":"cli"`, a `-p` call is `sdk-cli`.
+// Unknown counts as a person: forgetting a program is cheap, forgetting him is not.
+export function origin(file) {
+  // The whole file, not its head: a studio's first line is its prompt, and one ran past 20 KB
+  // before the first `entrypoint` — which read every studio call as a person.
+  let raw = '';
+  try { raw = fs.readFileSync(file, 'utf8'); } catch { return 'person'; }
+  const m = /"entrypoint":"([^"]*)"/.exec(raw);
+  return m && m[1].startsWith('sdk') ? 'headless' : 'person';
+}
+
+// The words the person actually typed, and nothing that only arrived in their turn: pasted
+// logs, task notifications, continuation summaries, slash-command echoes. A floor, not a
+// judgement — nothing here decides whether what they said was important. That judgement is
+// exactly what failed (2026-09-22: 224 episodes about compile errors and one about him).
+const NOT_THEIRS = /^(Caveat:|This session is being continued|Base directory for this skill|\[Request interrupted)/;
+export const SAID_MAX = 1200;
+export function theirWords(turns) {
+  const out = [];
+  for (const t of turns) {
+    if (t.role !== 'user') continue;
+    const text = t.text.replace(/\s+/g, ' ').trim();
+    if (!text || text.length > SAID_MAX || /^[<[{]/.test(text) || NOT_THEIRS.test(text) || /<task-notification>|tool_use_id/.test(text)) continue;
+    if (out.length && out.at(-1).text === text) continue; // a double submit is one sentence
+    out.push({ text, ts: t.ts });
+  }
+  return out;
+}
