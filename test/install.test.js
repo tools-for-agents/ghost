@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { scratch } from './helpers.js';
 scratch('install');
@@ -76,4 +77,8 @@ test('the output style is generated from the mind, switched on, and restored on 
   install.installStyle();
   install.uninstallStyle();
   assert.equal('outputStyle' in settings(), false, 'no previous style → key removed');
+});
+
+test('the tests never touch the real output style', () => {
+  assert.ok(!install.styleFile().startsWith(path.join(os.homedir(), '.claude')), 'GHOST_STYLES_DIR must point into the scratch dir');
 });
