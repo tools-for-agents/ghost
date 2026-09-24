@@ -32,5 +32,9 @@
     "persona",
     "hooks",
     "zero-dependency"
-  ]
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://tools-for-agents.github.io"
 }
