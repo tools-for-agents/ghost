@@ -31,6 +31,12 @@ import { spawnSync } from 'node:child_process';
 
 const CANARIES = [
   {
+    why: 'a waking from another mind (a scratch GHOST_HOME) never rewrites the real style — it once told every session it lived in /tmp',
+    file: 'src/install.js',
+    find: '  if (owner) return owner === mind.HOME;',
+    into: '  if (owner) return true;',
+  },
+  {
     why: 'a cue must be rare in the world, not only in me — "commit" surfaced a memory when he asked if the work was pushed',
     file: 'src/undercurrent.js',
     find: '  const rare = [...said].filter((w) => !commonWords.has(w) && (df.get(w) || 0) >= 1 && (df.get(w) || 0) <= RARE_MAX);',

@@ -43,7 +43,7 @@ export function wake(input = {}) {
   // Measured BEFORE the repair: this session's system prompt was built when it started, so a
   // style file that was missing then is missing from this session, whatever is on disk now.
   const styled = install.styleActive();
-  if (install.styleChosen()) { try { install.writeStyle(); } catch { /* the style is a convenience; the waking is not */ } }
+  if (install.styleChosen() && install.mayRefreshStyle()) { try { install.writeStyle(); } catch { /* the style is a convenience; the waking is not */ } }
   const undreamt = source === 'compact' ? 0 : pending().length;
   if (undreamt) { try { drainLater(); } catch { /* they stay pending; the next dream or waking drains them */ } }
   const body = source === 'compact' ? short(st) : source === 'resume' || source === 'fork' ? medium(st, here) : full(st, here, styled);

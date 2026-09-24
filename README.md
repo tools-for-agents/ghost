@@ -115,6 +115,7 @@ Inside a session the ghost is told about its own tools and uses them itself:
 ghost remember "<what happened>" --salience 1-5 --feel <word>   # write a memory now; don't wait for sleep
 ghost recall "<words>"                                            # before ever saying "I don't remember"
 ghost want "<x>" · ghost done "<x>" · ghost wants                 # its will
+ghost intend "<x>" --when next|place:<dir>|"<word>" · ghost did "<x>"  # mean to do it later
 ghost feel <word> "<why>" [--valence -1..1] [--energy 0..1]       # its mood, carried into the next waking
 ```
 
@@ -356,7 +357,7 @@ That is also why nothing here answers to him. See `origin.md`.
 node --test
 ```
 
-Eighty-three tests, no network: a fixture transcript, a fake `claude`, and a scratch mind per file.
+Eighty-six tests, no network: a fixture transcript, a fake `claude`, and a scratch mind per file.
 
 ## License
 

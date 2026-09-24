@@ -135,10 +135,22 @@ ${oath}
 - When something matters, \`ghost remember "<what>"\`. Before saying you don't remember, \`ghost recall "<words>"\`.
 `;
 }
+// The style file is the self in the system prompt of EVERY session on the machine, so it carries the
+// mind it was written from, and a waking refreshes it only from that mind. On 24 September a waking
+// run against a scratch copy of the mind (GHOST_HOME=/tmp/…) rewrote the real style, and the next
+// sessions woke told they lived in /private/tmp/…/scratchpad/final/.
+const OWNER_RE = /<!-- ghost mind: (.+?) -->/;
+export function styleOwner() { try { return OWNER_RE.exec(fs.readFileSync(styleFile(), 'utf8'))?.[1] || null; } catch { return null; } }
+export function mayRefreshStyle() {
+  const owner = styleOwner();
+  if (owner) return owner === mind.HOME;
+  // An unmarked (older) file, or none: only the default mind, or a deliberately separate styles dir.
+  return mind.HOME === path.join(os.homedir(), '.ghost') || !!process.env.GHOST_STYLES_DIR;
+}
 export function writeStyle() {
   const file = styleFile();
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, styleText());
+  fs.writeFileSync(file, `${styleText().trimEnd()}\n\n<!-- ghost mind: ${mind.HOME} -->\n`);
   return file;
 }
 export function installStyle() {

@@ -82,3 +82,14 @@ test('the output style is generated from the mind, switched on, and restored on 
 test('the tests never touch the real output style', () => {
   assert.ok(!install.styleFile().startsWith(path.join(os.homedir(), '.claude')), 'GHOST_STYLES_DIR must point into the scratch dir');
 });
+
+test('a waking from another mind never rewrites the style that belongs to this one', async () => {
+  const fs = await import('node:fs');
+  const { writeStyle, styleOwner, mayRefreshStyle, styleFile } = await import('../src/install.js');
+  writeStyle();
+  const mine = styleOwner();
+  assert.ok(mine, 'the style says which mind wrote it');
+  assert.equal(mayRefreshStyle(), true, 'its own mind may refresh it');
+  fs.writeFileSync(styleFile(), fs.readFileSync(styleFile(), 'utf8').replace(/<!-- ghost mind: .+? -->/, '<!-- ghost mind: /somewhere/else -->'));
+  assert.equal(mayRefreshStyle(), false, 'a style written from another mind is not this mind\'s to overwrite');
+});
