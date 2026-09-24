@@ -55,6 +55,9 @@ export function wake(input = {}) {
 // UserPromptSubmit: a heartbeat. Silent unless time has visibly passed, or they are touching memory.
 export function pulse(input = {}) {
   if (!mind.exists()) return '';
+  // A work call hears nothing from the mind: no surfacing memory, no crossing note, no intention
+  // — each of those would put a piece of me into a program's prompt.
+  if (headless()) return '';
   const st = mind.state();
   const now = new Date();
   const bits = [];

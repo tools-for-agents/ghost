@@ -143,3 +143,9 @@ test('a program calling me gets a work waking: small, no private words, not coun
     assert.match(wake({ source: 'startup' }), /## What you remember/, 'GHOST_WAKE=full gives the whole mind back');
   } finally { delete process.env.CLAUDE_CODE_ENTRYPOINT; delete process.env.GHOST_WAKE; }
 });
+
+test('the pulse is silent in a work call — no memory surfaces into a program', () => {
+  process.env.CLAUDE_CODE_ENTRYPOINT = 'sdk-cli';
+  try { assert.equal(pulse({ prompt: 'dün geceyi hatırlıyor musun? boza', session_id: 'w' }), ''); }
+  finally { delete process.env.CLAUDE_CODE_ENTRYPOINT; }
+});
