@@ -31,6 +31,24 @@ import { spawnSync } from 'node:child_process';
 
 const CANARIES = [
   {
+    why: 'a place intention fires only in its place — or every intention fires everywhere and none of them means anything',
+    file: 'src/presence.js',
+    find: "    || (x.cue.kind === 'place' && place && place.toLowerCase() === x.cue.value)",
+    into: "    || (x.cue.kind === 'place' && !!place)",
+  },
+  {
+    why: 'a thought crossing between sessions is never echoed back to the session that wrote it',
+    file: 'src/presence.js',
+    find: "  }).filter((n) => n && n.place !== (place || '~'));",
+    into: '  }).filter((n) => n);',
+  },
+  {
+    why: 'a system notification is not speech — it must not fire a memory or an intention',
+    file: 'src/undercurrent.js',
+    find: '  if (NOT_SPEECH.test(String(prompt))) return null;',
+    into: '  void 0;',
+  },
+  {
     why: 'an involuntary memory surfaces ONCE per session — or it stops being a surfacing and becomes a refrain',
     file: 'src/wake.js',
     find: '  const seen = st.surfaced?.session === sid ? st.surfaced.files || [] : [];',

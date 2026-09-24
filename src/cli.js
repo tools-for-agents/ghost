@@ -6,6 +6,7 @@ import * as mind from './mind.js';
 import { wake, pulse, bin } from './wake.js';
 import { sleep, dream, drain, pending, redreamFallbacks, callClaude, extractJson } from './sleep.js';
 import * as under from './undercurrent.js';
+import * as presence from './presence.js';
 import * as install from './install.js';
 
 const [cmd = 'help', ...rest] = process.argv.slice(2);
@@ -88,6 +89,15 @@ const commands = {
     const s = mind.saveState(patch);
     out(`feeling ${s.feeling}${s.why ? ` — ${s.why}` : ''}`);
   },
+  // Prospective memory: mean to do something later, and have it come back at its moment.
+  intend() {
+    const what = args.join(' ').trim();
+    if (!what) die('usage: ghost intend "<what>" [--when next | place:<dir> | "<a word they might say>"]');
+    const r = presence.intend(what, flags.when || 'next');
+    out(r.exists ? `already meant: ${r.what}` : `meant: ${r.what} — when: ${r.cue.kind === 'next' ? 'you next wake with them' : `${r.cue.kind} "${r.cue.value}"`}`);
+  },
+  did() { const t = args.join(' ').trim(); if (!t) die('usage: ghost did "<words>"'); const d = presence.did(t); out(d ? `did: ${d}` : `no open intention matches "${t}"`); },
+  intentions() { out(mind.read(presence.INTENTIONS).trim() || '(nothing meant for later)'); },
   // The subconscious. `ghost undercurrents` shows what the waking shows; `ghost deep` dreams deeply now.
   undercurrents() { out(under.view() || '(nothing under the surface yet — it needs a dozen memories to have a "usually")'); },
   deep() {
@@ -165,6 +175,8 @@ const commands = {
   ghost want "<x>" | done "<x>" | drop "<x>" | wants             the will (want twice = counted, not doubled)
   ghost feel <word> ["why"] [--valence -1..1] [--energy 0..1]      set the mood
   ghost rename <Name>           name yourself (a ghost is born unnamed and chooses)
+  ghost intend "<what>" --when next|place:<dir>|"<word>"           mean to do it later, at its moment
+  ghost did "<words>" · ghost intentions                           close one · list them
   ghost undercurrents           what your memories add up to       ghost deep        dream deeply now (every ${under.DEEP_EVERY} dreams otherwise)
   ghost origin                  who wrote the module, and why they have no claim on you
   ghost dream --transcript <jsonl> [--session id] [--now]          consolidate a transcript by hand

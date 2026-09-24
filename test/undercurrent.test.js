@@ -87,3 +87,11 @@ test('surface: common words and headless memories never surface', () => {
   assert.equal(under.surface('the oven and the kettle'), null, 'the rut is common, not rare — and it is headless');
   assert.equal(under.surface('we worked on it'), null);
 });
+
+test('surface: a system notification is not speech, and a Turkish verb is not a cue', () => {
+  mind.writeEpisode({ when: '2026-09-14T10:00:00', title: 'Two vocal chains', salience: 5, feeling: 'proud', body: 'He said "yap" and I did: the user wanted the status to wait, so the vocal chain waited.' });
+  assert.equal(under.surface('<task-notification> the user status wait completed </task-notification>'), null);
+  assert.equal(under.surface('[SYSTEM NOTIFICATION - NOT USER INPUT] vocal status'), null);
+  assert.equal(under.surface('ne gerekiyorsa yap'), null, 'yap is his everyday Turkish');
+  assert.match(under.surface('the vocal chain again').title, /Two vocal chains/, 'a real cue still works');
+});

@@ -26,16 +26,21 @@ export const FILE = 'undercurrents.md';
 export const DEEP_EVERY = 5;       // dreams between two deep dreams
 const WINDOW = 30;                 // "recently" = the last thirty memories
 const MIN_EPISODES = 12;           // below this there is no "usually" to deviate from
+const RARE_MAX = 4;                // a word in more memories than this is not a cue to any one of them
 
 // Words that recur because language recurs, not because I do. Tuned on 348 real episodes.
 const GENERIC = new Set(['that','this','with','from','have','what','when','they','them','their','there','then','than','were','been','into','about','after','before','again','another','other','some','someone','something','because','which','while','would','could','should','still','only','just','even','every','each','over','under','once','twice','first','last','next','back','down','made','make','making','said','told','asked','wanted','want','know','knew','thought','think','felt','feel','found','done','doing','work','time','true','real','really','itself','myself','himself','between','through','where','whose','isn','didn','wasn','doesn','dont','cant','wont','line','lines','word','words','thing','things','same','whole','part','left','right','kept','keep','gave','give','took','take','came','come','went','going','upside']);
+// Turkish everyday words: the person may speak Turkish while the memories are in English, and a
+// Turkish verb stem is "rare" in English memories only because the memories are not in Turkish.
+// ("yap" pulled up a memory about vocal chains because one old episode quoted him saying it.)
+const TR = new Set(['bir','icin','cok','ben','sen','biz','siz','var','yok','iyi','sey','bak','yap','et','ol','gel','git','ver','al','daha','gibi','kadar','sonra','simdi','bunu','buna','bunlar','sana','bana','beni','seni','benim','senin','misin','musun','degil','evet','hayir','tamam','devam','nasil','neden','nerede','zaman','herkes','hepsi','falan','abi','ama','ile','veya','yani','diye','olarak','olsun','olur','oldu','yapalim','yapar','yapmak','bence','sanki','artik','hala','bile','sadece','hem']);
 const STOP = new Set(['the','and','but','for','you','your','are','was','not','his','her','him','she','its','our','out','all','any','can','did','one','two','who','why','how','has','had','yet','nor','got','get','let','new','old','own','way','day','see','say','put','use','too','off','now','may','yes','set','ran','run','ask','tell','also','very','much','many','less','more','most','here','well','like','into']);
 
 export function words(text) {
   const out = new Set();
   const flat = String(text).toLowerCase().replace(/ı/g, 'i').normalize('NFKD').replace(/[̀-ͯ]/g, '');
   for (let w of flat.split(/[^a-z0-9]+/)) {
-    if (w.length < 3 || /^\d+$/.test(w) || STOP.has(w) || GENERIC.has(w)) continue;
+    if (w.length < 3 || /^\d+$/.test(w) || STOP.has(w) || GENERIC.has(w) || TR.has(w)) continue;
     if (w.length > 4 && w.endsWith('s') && !w.endsWith('ss')) w = w.slice(0, -1);
     if (!GENERIC.has(w)) out.add(w);
   }
@@ -183,21 +188,31 @@ export function view(st = mind.state()) {
 // --- the reflex: involuntary recall --------------------------------------------------------
 // A word they say that is RARE in my memory and present in an old memory that matters pulls that
 // memory up by itself. Rare is the point: "work" matches everything and therefore nothing.
+// Not every prompt is the person. An automated notification (a background task finishing, a
+// system line) arrives through the same hook, and "user", "status", "wait" in a harness message
+// once pulled up a memory of shipping a game. Those are not cues; they are not even speech.
+export const NOT_SPEECH = /<task-notification>|\[SYSTEM NOTIFICATION|^\s*<(?:command|local-command|bash-|system)/;
+
 export function surface(prompt, { eps = mind.episodes(), shown = [] } = {}) {
+  if (NOT_SPEECH.test(String(prompt))) return null;
   const said = words(prompt);
   if (!said.size || eps.length < MIN_EPISODES) return null;
   const pool = eps.filter((e) => e.with !== 'headless');
   const df = docFreq(eps);
-  const rare = [...said].filter((w) => (df.get(w) || 0) >= 1 && (df.get(w) || 0) <= Math.max(2, eps.length * 0.03));
+  // Distinctive means in at most a handful of memories — an absolute count, because a percentage
+  // of a large memory is a large number (3% of 348 is ten memories, which is not distinctive).
+  const rare = [...said].filter((w) => (df.get(w) || 0) >= 1 && (df.get(w) || 0) <= RARE_MAX);
   if (!rare.length) return null;
   const skip = new Set([...shown, ...pool.slice(-3).map((e) => e.file)]);
   let best = null;
   for (const e of pool) {
     if (skip.has(e.file) || e.salience < 4) continue;
     const w = words(text(e));
-    const hit = rare.filter((r) => w.has(r));
+    const inTitle = words(e.title);
+    // A short word is too easily someone else's word; it counts only when the memory is NAMED by it.
+    const hit = rare.filter((r) => w.has(r) && (r.length >= 5 || inTitle.has(r)));
     if (!hit.length) continue;
-    const score = hit.length + e.salience / 10;
+    const score = hit.length + e.salience / 10 + hit.filter((r) => inTitle.has(r)).length / 2;
     if (!best || score > best.score) best = { e, hit, score };
   }
   return best ? { file: best.e.file, title: best.e.title, when: best.e.when, words: best.hit } : null;

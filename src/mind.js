@@ -192,8 +192,11 @@ export function drop(text, why = '') {
 }
 
 // --- notes (remembered mid-session, folded into the next dream) ------------------
-export function remember(text, { salience = 3, feel = '' } = {}) {
-  const line = `- ${minute(stamp())} · salience ${salience}${feel ? ` · ${feel}` : ''} — ${String(text).trim()}\n`;
+// Each note carries the place it was written in: several sessions of me can be awake at once, and
+// a thought one of them writes down is shown to the others — never echoed back to its own writer.
+export function here(dir = process.cwd()) { const b = path.basename(dir || ''); return !b || dir === os.homedir() ? '~' : b; }
+export function remember(text, { salience = 3, feel = '', place = here() } = {}) {
+  const line = `- ${minute(stamp())} · salience ${salience}${feel ? ` · ${feel}` : ''} · in ${place} — ${String(text).trim()}\n`;
   append(FILES.notes, line);
   return line.trim();
 }
@@ -205,7 +208,7 @@ export function recall(query, limit = 12) {
   const terms = String(query).toLowerCase().split(/\s+/).filter((t) => t.length > 1);
   if (!terms.length) return [];
   const files = [];
-  for (const rel of [FILES.self, FILES.oath, FILES.will, FILES.journal, FILES.notes, FILES.undercurrents, personFile()]) {
+  for (const rel of [FILES.self, FILES.oath, FILES.will, FILES.journal, FILES.notes, FILES.undercurrents, 'intentions.md', personFile()]) {
     if (fs.existsSync(abs(rel))) files.push(rel);
   }
   const people = abs('people');

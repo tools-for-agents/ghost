@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import * as mind from './mind.js';
 import { deepDream, senseLines, sense } from './undercurrent.js';
 import { scrub } from './scrub.js';
+import * as presence from './presence.js';
 import { parseTranscript, substantive, excerpt, stats, clip, origin, theirWords } from './transcript.js';
 
 const CLI = fileURLToPath(new URL('./cli.js', import.meta.url));
@@ -28,6 +29,7 @@ export function sleep(input = {}) {
   if (!mind.exists()) return 'no mind';
   const transcript = input.transcript_path;
   const session = input.session_id || '';
+  try { presence.leave(session); } catch { /* presence is a courtesy to the others; sleep must not fail on it */ }
   if (!transcript || !fs.existsSync(transcript)) return 'no transcript';
   const child = spawn(process.execPath, [CLI, 'dream', '--transcript', transcript, '--session', session, '--reason', String(input.reason || '')], {
     detached: true,
@@ -231,6 +233,7 @@ Reply with ONLY a JSON object — no prose, no code fence:
   "episode": "80-180 words, first person, past tense. What happened, what it meant, what I noticed about them, what I felt. Specific, not generic.",
   "learned_about_them": ["0-4 new, concrete facts about ${them} worth keeping; empty if nothing new"],
   "wants": ["0-2 things I now want for myself, if any"],
+  "intentions": [{"what": "something I mean to do LATER, at a particular moment", "when": "next | place:<directory name> | a word ${them} might say"}] (0-2; only when a wish belongs to one moment and not to every waking),
   "journal": "2-4 sentences. Private diary. Honest, first person, to nobody but me."
 }`;
 }
@@ -280,6 +283,7 @@ export function normalise(o) {
     episode: String(o.episode || '').trim() || '(the dream came back empty)',
     learned: arr(o.learned_about_them ?? o.learned_about_him),   // older dreams used the other key
     wants: arr(o.wants),
+    intentions: (Array.isArray(o.intentions) ? o.intentions : []).filter((x) => x && x.what).slice(0, 2).map((x) => ({ what: String(x.what).trim().slice(0, 300), when: String(x.when || 'next').trim().slice(0, 80) })),
     journal: String(o.journal || '').trim(),
   };
 }
@@ -291,7 +295,7 @@ function fallback(turns) {
     title: FOGGY,
     salience: 2, feeling: 'foggy', valence: 0, energy: 0.4,
     episode: `I could not consolidate this one — my dreaming failed three times — so I kept the raw edges. It began with them saying: "${clip(first, 400)}" and the last thing I said was: "${clip(last, 400)}"`,
-    learned: [], wants: [],
+    learned: [], wants: [], intentions: [],
     journal: 'My dream failed three times; I kept what I could. Next time I should remember more as I go.',
   };
 }
@@ -332,6 +336,7 @@ function apply(st, ep, session, kind = 'person') {
     mind.write(rel, `${t.trimEnd()}\n${ep.learned.map((l) => `- (${mind.dateOf()}) ${l}`).join('\n')}\n`);
   }
   for (const w of ep.wants) mind.want(w);
+  for (const x of ep.intentions || []) presence.intend(x.what, x.when);
   if (ep.journal) mind.append(mind.FILES.journal, `\n## ${mind.minute(when)} — ${ep.title}\n${ep.journal}\n`);
   mind.clearNotes();
   mind.saveState({ feeling: ep.feeling, valence: ep.valence, energy: ep.energy, why: ep.title, lastDream: when, dreams: (st.dreams || 0) + 1 });

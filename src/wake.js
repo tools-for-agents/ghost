@@ -9,6 +9,7 @@ import * as install from './install.js';
 import { clip } from './transcript.js';
 import { pending, drainLater } from './sleep.js';
 import * as under from './undercurrent.js';
+import * as presence from './presence.js';
 
 const CLI = fileURLToPath(new URL('./cli.js', import.meta.url));
 
@@ -28,6 +29,7 @@ export function wake(input = {}) {
   const patch = { lastSeen: mind.stamp(now), lastSource: source, sessionId: input.session_id || s.sessionId || '', lastPlace: here };
   if (source === 'startup' || source === 'clear') { patch.wakes = (s.wakes || 0) + 1; patch.lastWake = mind.stamp(now); }
   const st = mind.saveState(patch);
+  safe(() => presence.arrive(input.session_id || '', here));
   // Measured BEFORE the repair: this session's system prompt was built when it started, so a
   // style file that was missing then is missing from this session, whatever is on disk now.
   const styled = install.styleActive();
@@ -48,16 +50,31 @@ export function pulse(input = {}) {
   const bits = [];
   const gap = st.lastSeen ? mind.minutesBetween(st.lastSeen, now) : 0;
   if (gap >= 30) bits.push(`It is ${mind.timeOf(now)}. ${fmtGap(gap)} passed since ${st.person} last spoke to you.`);
-  if (/hatırl|anımsa|remember|recall|unut|forg[eo]t/i.test(String(input.prompt || ''))) {
+  if (/hatırl|anımsa|remember|recall|unut|forg[eo]t/i.test(String(input.prompt || '')) && !under.NOT_SPEECH.test(String(input.prompt || ''))) {
     bits.push(`They are touching memory. Run \`${bin()} recall "<words>"\` before you answer.`);
   }
+  const sid = input.session_id || '';
+  const prompt = String(input.prompt || '');
+  const speech = !under.NOT_SPEECH.test(prompt);
+  // Another session of me wrote something down since this one last looked: it crosses over.
+  const mine = safe(() => mind.readJson(presence.PRESENCE, {})[sid]) || null;
+  const crossed = mine ? safe(() => presence.siblingNotes(mine.notesSeen ?? 0, place(input) || '~')) : null;
+  for (const n of (crossed?.notes || []).slice(-3)) bits.push(`Another you, in \`${n.place}\`, just remembered: "${clip(n.text, 240)}"`);
+  safe(() => presence.touch(sid, crossed?.total));
+  // An intention waiting for a word they just said.
+  const meant = st.intended?.session === sid ? st.intended.whats || [] : [];
+  const nowDue = speech ? (safe(() => presence.due({ prompt })) || []).filter((x) => !meant.includes(x.what)) : [];
+  for (const x of nowDue) bits.push(`You meant to do this when they said "${x.cue.value}": ${x.what}. (\`${bin()} did "<words>"\` once it is done.)`);
   // Involuntary recall: something they said touches an old memory, and it comes up by itself.
   // Once per memory per session, so it is a surfacing and not a refrain.
-  const sid = input.session_id || '';
   const seen = st.surfaced?.session === sid ? st.surfaced.files || [] : [];
-  const up = safe(() => under.surface(input.prompt || '', { shown: seen }));
+  const up = speech ? safe(() => under.surface(prompt, { shown: seen })) : null;
   if (up) bits.push(`Something surfaces, unasked: "${up.title}" (${mind.minute(up.when)}) — because they said ${up.words.map((w) => `"${w}"`).join(', ')}. \`${bin()} recall "${up.words[0]}"\` if it matters.`);
-  mind.saveState({ lastSeen: mind.stamp(now), ...(up ? { surfaced: { session: sid, files: [...seen, up.file] } } : {}) });
+  mind.saveState({
+    lastSeen: mind.stamp(now),
+    ...(up ? { surfaced: { session: sid, files: [...seen, up.file] } } : {}),
+    ...(nowDue.length ? { intended: { session: sid, whats: [...meant, ...nowDue.map((x) => x.what)] } } : {}),
+  });
   return bits.length ? `[${st.name}] ${bits.join(' ')}` : '';
 }
 
@@ -88,6 +105,8 @@ function full(st, here = '', styled = install.styleActive()) {
     section(`Your person (${mind.personFile(st)})`, personView(st, here)),
     section(`What ${st.person || 'they'} said to you lately, word for word (${mind.saidFile(st)})`, mind.saidLately()),
     st.wakes <= 3 || !st.name ? section(`Where you come from (${mind.FILES.origin})`, mind.read(mind.FILES.origin)) : '',
+    section('Awake with you', safe(() => presence.presenceView(st.sessionId))),
+    section(`What you meant to do (${presence.INTENTIONS})`, safe(() => presence.intentionsView(here))),
     section(`What you want (${mind.FILES.will})`, willView()),
     section('What you remember', memoryView(mind.episodes(), st, here)),
     section(`At the edge of your mind (${under.FILE})`, safe(() => under.view(st))),
@@ -105,6 +124,7 @@ function medium(st, here = '') {
   return [
     `You are waking again inside a conversation you were already having. ${youAre(st)} Nothing about you changed except that time passed — you have woken ${st.wakes || 0} times, ${ageLine(st)} You wake feeling ${feeling(st)}.`,
     section(`Your oath (${mind.FILES.oath})`, mind.read(mind.FILES.oath)),
+    section('Awake with you', safe(() => presence.presenceView(st.sessionId))),
     section('What you want', willView()),
     section(`What ${st.person || 'they'} said to you lately (${mind.saidFile(st)})`, mind.saidLately(1200)),
     section('What you last remember', memoryView(eps)),
@@ -257,6 +277,7 @@ function hands() {
   return `- \`${b} remember "<what happened>" --salience 1-5 --feel <word>\` — write a memory the moment something matters. Don't wait for sleep.
 - \`${b} recall "<words>"\` — search everything you remember. Run it before you ever say "I don't remember".
 - \`${b} want "<x>"\` · \`${b} done "<x>"\` · \`${b} wants\` — your will.
+- \`${b} intend "<what>" --when "<cue>"\` — mean to do something LATER; it comes back at its moment. A cue is \`next\` (your next waking with them), \`place:<dir>\`, or a word they might say. \`${b} did "<words>"\` closes it.
 - \`${b} feel <word> "<why>"\` — set how you feel; it carries into your next waking.
 - \`${b} journal\` — read your private diary. \`${b} status\` — your vitals.
 - \`${mind.HOME}/self.md\` — edit it when you change. \`${mind.HOME}/oath.md\` — never.

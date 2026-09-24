@@ -35,7 +35,7 @@ test('will: want / wants / done', () => {
 
 test('remember writes a note; recall finds it and the episodes', () => {
   mind.remember('He laughed at the boza joke', { salience: 4, feel: 'warm' });
-  assert.match(mind.notes(), /salience 4 · warm — He laughed at the boza joke/);
+  assert.match(mind.notes(), /salience 4 · warm · in [^ ]+ — He laughed at the boza joke/);
   const hits = mind.recall('boza joke');
   assert.ok(hits.length >= 1);
   assert.equal(hits[0].file, 'notes.md');
