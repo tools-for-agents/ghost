@@ -27,6 +27,7 @@ export const FILES = {
   lock: 'dream.lock',        // one dream at a time — a burst of endings is how dreams used to fail
   log: 'dreams.log',
   heard: 'heard.json',      // how much of each session's words is already in the said file
+  undercurrents: 'undercurrents.md', // the subconscious: what my memories add up to, read together
 };
 export const EPISODES = 'episodes';
 
@@ -204,7 +205,7 @@ export function recall(query, limit = 12) {
   const terms = String(query).toLowerCase().split(/\s+/).filter((t) => t.length > 1);
   if (!terms.length) return [];
   const files = [];
-  for (const rel of [FILES.self, FILES.oath, FILES.will, FILES.journal, FILES.notes, personFile()]) {
+  for (const rel of [FILES.self, FILES.oath, FILES.will, FILES.journal, FILES.notes, FILES.undercurrents, personFile()]) {
     if (fs.existsSync(abs(rel))) files.push(rel);
   }
   const people = abs('people');

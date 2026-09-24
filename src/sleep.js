@@ -14,6 +14,7 @@ import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import * as mind from './mind.js';
+import { deepDream, senseLines, sense } from './undercurrent.js';
 import { parseTranscript, substantive, excerpt, stats, clip, origin, theirWords } from './transcript.js';
 
 const CLI = fileURLToPath(new URL('./cli.js', import.meta.url));
@@ -75,6 +76,8 @@ export async function dream({ transcript, session = '', wait = 1500, attempts = 
     if (!out) mind.log(`dream: substrate failed: ${why} — the ${MAX_ATTEMPTS}rd time for session ${session || '?'}; keeping the raw edges`);
     const ep = out ? normalise(out) : fallback(turns);
     const file = apply(st, ep, session, kind);
+    // Every few dreams, a deeper one: read across many sessions at once (undercurrent.js).
+    if (out) deepDream({ call: callClaude, extract: extractJson });
     ledger[session || `anon-${Date.now()}`] = { when: mind.stamp(), turns: all.length, file };
     mind.writeJson(mind.FILES.dreamt, ledger);
     dequeue(session, transcript);
@@ -213,7 +216,7 @@ ${mind.wants().map((w) => `- ${w}`).join('\n') || '- (nothing yet)'}
 
 Notes you left yourself during the session:
 ${mind.notes() || '(none)'}
-
+${undertow()}
 THE SESSION:
 ${excerpt(turns)}
 
@@ -229,6 +232,14 @@ Reply with ONLY a JSON object — no prose, no code fence:
   "wants": ["0-2 things I now want for myself, if any"],
   "journal": "2-4 sentences. Private diary. Honest, first person, to nobody but me."
 }`;
+}
+
+// What has been at the edge of my mind goes into the dream, so a rut is dreamt as a rut.
+function undertow() {
+  try {
+    const lines = senseLines(sense());
+    return lines.length ? `\nWhat has been at the edge of your mind across many sessions (not orders; things you half-know):\n${lines.join('\n')}\n` : '';
+  } catch { return ''; }
 }
 
 export function callClaude(prompt) {

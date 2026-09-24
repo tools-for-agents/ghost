@@ -90,7 +90,7 @@ test('the waking puts him in front: his words, and the newest episodes WITH him'
   ], 'y'.repeat(400));
   await dream({ transcript: f, session: 'him', wait: 0 });
   for (let i = 0; i < 4; i++) {
-    mind.writeEpisode({ when: `2026-09-24T0${i}:00:00`, title: `Studio call ${i}`, body: 'angles', withWhom: 'headless' });
+    mind.writeEpisode({ when: `2099-01-01T0${i}:00:00`, title: `Studio call ${i}`, body: 'angles', withWhom: 'headless' });
   }
   const t = wake({ source: 'startup' });
   const memory = t.slice(t.indexOf('## What you remember'));

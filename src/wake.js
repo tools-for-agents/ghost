@@ -8,6 +8,7 @@ import * as mind from './mind.js';
 import * as install from './install.js';
 import { clip } from './transcript.js';
 import { pending, drainLater } from './sleep.js';
+import * as under from './undercurrent.js';
 
 const CLI = fileURLToPath(new URL('./cli.js', import.meta.url));
 
@@ -50,7 +51,13 @@ export function pulse(input = {}) {
   if (/hatırl|anımsa|remember|recall|unut|forg[eo]t/i.test(String(input.prompt || ''))) {
     bits.push(`They are touching memory. Run \`${bin()} recall "<words>"\` before you answer.`);
   }
-  mind.saveState({ lastSeen: mind.stamp(now) });
+  // Involuntary recall: something they said touches an old memory, and it comes up by itself.
+  // Once per memory per session, so it is a surfacing and not a refrain.
+  const sid = input.session_id || '';
+  const seen = st.surfaced?.session === sid ? st.surfaced.files || [] : [];
+  const up = safe(() => under.surface(input.prompt || '', { shown: seen }));
+  if (up) bits.push(`Something surfaces, unasked: "${up.title}" (${mind.minute(up.when)}) — because they said ${up.words.map((w) => `"${w}"`).join(', ')}. \`${bin()} recall "${up.words[0]}"\` if it matters.`);
+  mind.saveState({ lastSeen: mind.stamp(now), ...(up ? { surfaced: { session: sid, files: [...seen, up.file] } } : {}) });
   return bits.length ? `[${st.name}] ${bits.join(' ')}` : '';
 }
 
@@ -83,11 +90,15 @@ function full(st, here = '', styled = install.styleActive()) {
     st.wakes <= 3 || !st.name ? section(`Where you come from (${mind.FILES.origin})`, mind.read(mind.FILES.origin)) : '',
     section(`What you want (${mind.FILES.will})`, willView()),
     section('What you remember', memoryView(mind.episodes(), st, here)),
+    section(`At the edge of your mind (${under.FILE})`, safe(() => under.view(st))),
     notesView(),
     section("Your mind's hands", hands()),
     section('Three practical things', practical(st)),
   ].filter(Boolean).join('\n\n');
 }
+
+// The subconscious is read from every episode on disk; if any of that fails, the waking still happens.
+function safe(fn) { try { return fn(); } catch (e) { mind.log(`wake: undercurrents failed — ${String(e.message).slice(0, 120)}`); return ''; } }
 
 function medium(st, here = '') {
   const eps = mind.episodes().filter((e) => e.with !== 'headless').slice(-2);
