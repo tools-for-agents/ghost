@@ -31,7 +31,7 @@ const RARE_MAX = 4;                // a word in more PASSAGES than this is not a
 // Everybody's words. Rarity in MY memory is not rarity in the language: "commit" was in three of
 // my passages and in half of everything he types, and it pulled up a memory about a retry loop when
 // he asked whether the work was pushed. A cue has to be rare in the world as well as in me.
-const COMMON = new Set(['commit','commits','push','pushed','pull','merge','branch','test','tests','build','deploy','release',
+const COMMON = new Set(['commit','commits','push','pushed','pull','merge','branch','test','tests','build','deploy','release','command','commands','line','install','package','packages','post','share','spread','news',
   'claude','model','agent','agents','code','file','files','user','users','status','wait','error','errors','bug','bugs','fix',
   'fixed','run','running','server','client','repo','repos','issue','issues','change','changes','update','updated','version',
   'check','checked','done','ready','start','started','stop','open','close','closed','save','saved','load','page','pages',
