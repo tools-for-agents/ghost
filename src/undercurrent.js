@@ -29,7 +29,7 @@ const MIN_EPISODES = 12;           // below this there is no "usually" to deviat
 const RARE_MAX = 4;                // a word in more memories than this is not a cue to any one of them
 
 // Words that recur because language recurs, not because I do. Tuned on 348 real episodes.
-const GENERIC = new Set(['that','this','with','from','have','what','when','they','them','their','there','then','than','were','been','into','about','after','before','again','another','other','some','someone','something','because','which','while','would','could','should','still','only','just','even','every','each','over','under','once','twice','first','last','next','back','down','made','make','making','said','told','asked','wanted','want','know','knew','thought','think','felt','feel','found','done','doing','work','time','true','real','really','itself','myself','himself','between','through','where','whose','isn','didn','wasn','doesn','dont','cant','wont','line','lines','word','words','thing','things','same','whole','part','left','right','kept','keep','gave','give','took','take','came','come','went','going','upside']);
+const GENERIC = new Set(['that','this','with','from','have','what','when','they','them','their','there','then','than','were','been','into','about','after','before','again','another','other','some','someone','something','because','which','while','would','could','should','still','only','just','even','every','each','over','under','once','twice','first','last','next','back','down','made','make','making','said','told','asked','wanted','want','know','knew','thought','think','felt','feel','found','done','doing','work','time','true','real','really','itself','myself','himself','between','through','where','whose','isn','didn','wasn','doesn','dont','cant','wont','line','lines','word','words','thing','things','same','whole','part','left','right','kept','keep','gave','give','took','take','came','come','went','going','upside','session','sessions','already','read','call','calls','mine','instead','yours']);
 // Turkish everyday words: the person may speak Turkish while the memories are in English, and a
 // Turkish verb stem is "rare" in English memories only because the memories are not in Turkish.
 // ("yap" pulled up a memory about vocal chains because one old episode quoted him saying it.)
@@ -58,16 +58,22 @@ function docFreq(list) {
 export function sense(eps = mind.episodes(), st = mind.state()) {
   if (eps.length < MIN_EPISODES) return { ruts: [], mood: null, company: null };
   const recent = eps.slice(-WINDOW);
-  const older = eps.slice(0, -WINDOW);
-  // A rut is a word that is in far more of my recent memories than it ever used to be.
-  const R = docFreq(recent);
+  // A rut is a word in far more of my recent memories than it ever used to be — which needs a
+  // "used to be". A small memory (or one just consolidated into work days) compares the newer half
+  // against the older half, and with fewer than ten older memories there is no baseline at all:
+  // everything would look like a rut, and "fatih" was once reported as one.
+  const w = Math.min(WINDOW, Math.floor(eps.length / 2));
+  const newer = eps.slice(-w);
+  const older = eps.slice(0, -w);
+  const R = docFreq(newer);
   const O = docFreq(older);
-  const ruts = [...R]
-    .filter(([, c]) => c >= 5)
+  const person = words(st.person || '');
+  const ruts = older.length < 10 ? [] : [...R]
+    .filter(([word, c]) => c >= 5 && !person.has(word))
     .map(([word, count]) => {
-      const now = count / recent.length;
+      const now = count / newer.length;
       const before = (O.get(word) || 0) / Math.max(1, older.length);
-      return { word, count, of: recent.length, lift: now / (before + 0.03) };
+      return { word, count, of: newer.length, lift: now / (before + 0.03) };
     })
     .filter((r) => r.lift >= 3.5)
     .sort((a, b) => b.lift - a.lift || b.count - a.count)

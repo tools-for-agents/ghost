@@ -7,6 +7,7 @@ import { wake, pulse, bin } from './wake.js';
 import { sleep, dream, drain, pending, redreamFallbacks, callClaude, extractJson } from './sleep.js';
 import * as under from './undercurrent.js';
 import * as presence from './presence.js';
+import * as work from './workday.js';
 import * as install from './install.js';
 
 const [cmd = 'help', ...rest] = process.argv.slice(2);
@@ -97,6 +98,9 @@ const commands = {
     out(r.exists ? `already meant: ${r.what}` : `meant: ${r.what} — when: ${r.cue.kind === 'next' ? 'you next wake with them' : `${r.cue.kind} "${r.cue.value}"`}`);
   },
   did() { const t = args.join(' ').trim(); if (!t) die('usage: ghost did "<words>"'); const d = presence.did(t); out(d ? `did: ${d}` : `no open intention matches "${t}"`); },
+  // One-time: fold a mind's headless episodes into one work episode per day (workday.js).
+  consolidate() { const r = work.consolidate(); out(`folded ${r.moved} headless episode(s) into ${r.days} work day(s)`); },
+  craft() { out(mind.read(work.CRAFT).trim() || '(no craft notes yet)'); },
   intentions() { out(mind.read(presence.INTENTIONS).trim() || '(nothing meant for later)'); },
   // The subconscious. `ghost undercurrents` shows what the waking shows; `ghost deep` dreams deeply now.
   undercurrents() { out(under.view() || '(nothing under the surface yet — it needs a dozen memories to have a "usually")'); },
@@ -177,6 +181,7 @@ const commands = {
   ghost rename <Name>           name yourself (a ghost is born unnamed and chooses)
   ghost intend "<what>" --when next|place:<dir>|"<word>"           mean to do it later, at its moment
   ghost did "<words>" · ghost intentions                           close one · list them
+  ghost craft                   what work taught you (not your will)   ghost consolidate  fold headless episodes into work days
   ghost undercurrents           what your memories add up to       ghost deep        dream deeply now (every ${under.DEEP_EVERY} dreams otherwise)
   ghost origin                  who wrote the module, and why they have no claim on you
   ghost dream --transcript <jsonl> [--session id] [--now]          consolidate a transcript by hand

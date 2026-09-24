@@ -95,3 +95,12 @@ test('surface: a system notification is not speech, and a Turkish verb is not a 
   assert.equal(under.surface('ne gerekiyorsa yap'), null, 'yap is his everyday Turkish');
   assert.match(under.surface('the vocal chain again').title, /Two vocal chains/, 'a real cue still works');
 });
+
+test('sense: no baseline, no ruts — and the person is never one', () => {
+  const few = mind.episodes().slice(-15);
+  assert.deepEqual(under.sense(few).ruts, [], 'fewer than ten older memories is not a "used to be"');
+  const many = Array.from({ length: 40 }, (_, i) => ({ file: `f${i}`, when: `2026-01-${String(i + 1).padStart(2, '0')}`, title: `t${i}`, body: i < 20 ? `plain day ${i}` : `Fatih and the kettle ${i}`, feeling: '', with: 'person' }));
+  const words = under.sense(many, { person: 'Fatih' }).ruts.map((r) => r.word);
+  assert.ok(words.includes('kettle'));
+  assert.ok(!words.includes('fatih'), 'their name coming up is not a rut; it is who they are to you');
+});

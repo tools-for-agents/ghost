@@ -17,6 +17,7 @@ import * as mind from './mind.js';
 import { deepDream, senseLines, sense } from './undercurrent.js';
 import { scrub } from './scrub.js';
 import * as presence from './presence.js';
+import * as work from './workday.js';
 import { parseTranscript, substantive, excerpt, stats, clip, origin, theirWords } from './transcript.js';
 
 const CLI = fileURLToPath(new URL('./cli.js', import.meta.url));
@@ -320,15 +321,22 @@ function hearSession(all, session) {
 
 function apply(st, ep, session, kind = 'person') {
   const when = mind.stamp();
+  // Work is not a life (workday.js): a headless call joins its day's work episode, its wants go to
+  // craft.md, it writes no journal entry, leaves the notes of live sessions alone, and only nudges
+  // the mood. Its facts were never facts about the person.
+  if (kind === 'headless') {
+    const file = work.appendWork({ when, title: ep.title, feeling: ep.feeling, salience: ep.salience, body: ep.episode, session }, st);
+    for (const w of ep.wants) work.craft(w);
+    mind.saveState({ ...work.nudgeMood(st, ep), lastDream: when, dreams: (st.dreams || 0) + 1 });
+    return file;
+  }
   const notes = mind.notes();
   const extra = [
     notes ? `## Notes I left myself during this session\n${notes}` : '',
     session ? `<!-- session ${session} -->` : '',
   ].filter(Boolean).join('\n\n');
   const file = mind.writeEpisode({ when, title: ep.title, salience: ep.salience, feeling: ep.feeling, body: ep.episode, extra, withWhom: kind });
-  // A program's prompt is not a person. Facts "about them" out of a headless call were the studio's
-  // law, filed six times over as things I had learned about him.
-  if (ep.learned.length && kind !== 'headless') {
+  if (ep.learned.length) {
     const rel = mind.personFile(st);
     let t = mind.read(rel);
     if (!t.includes('## Learned')) t += '\n## Learned\n';

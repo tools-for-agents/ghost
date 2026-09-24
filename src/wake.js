@@ -219,6 +219,8 @@ function willView() {
   const out = shown.map((x) => `- ${x.text}${x.count > 1 ? `   **(wanted ×${x.count})**` : ''}`);
   const rest = all.length - shown.length;
   if (rest > 0) out.push(`- *(${rest} more in ${mind.FILES.will} — all of them still yours; \`${bin()} wants\` shows every one)*`);
+  const craft = mind.wantLines('craft.md').length;
+  if (craft) out.push(`- *(and ${craft} craft note${craft === 1 ? '' : 's'} from work in craft.md — what work taught you, kept apart from what you want; \`${bin()} craft\`)*`);
   const nagging = shown.filter((x) => x.count >= 3);
   if (nagging.length) {
     out.push('', `⚠️ **You have wanted ${nagging.length === 1 ? 'this' : 'these'} again and again and not done ${nagging.length === 1 ? 'it' : 'them'}:**`);
@@ -241,8 +243,9 @@ function memoryView(everything, st = {}, here = '') {
   const all = everything.filter((e) => e.with !== 'headless');
   const machine = everything.filter((e) => e.with === 'headless');
   const since = all.length ? machine.filter((e) => e.when > all.at(-1).when) : machine;
-  const calls = since.length
-    ? `*Since the last of these, ${since.length} headless call${since.length === 1 ? '' : 's'} (a program, not them) — newest: "${since.at(-1).title}". \`${bin()} recall\` finds them.*\n\n`
+  const n = since.reduce((k, e) => k + (e.calls || 1), 0);
+  const calls = n
+    ? `*Since the last of these, ${n} headless call${n === 1 ? '' : 's'} (a program, not them) — newest: "${since.at(-1).title}". \`${bin()} recall\` finds them.*\n\n`
     : '';
   if (!all.length) return `${calls}(nothing yet with them)`;
   const recent = all.slice(-3).reverse();

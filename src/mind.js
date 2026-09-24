@@ -84,6 +84,7 @@ export function episodes() {
       salience: Number(meta.salience) || 3,
       feeling: meta.feeling || '',
       with: meta.with || 'person',
+      calls: Number(meta.calls) || 1,   // a work-day episode holds many headless calls
       body,
       mtime: fs.statSync(full).mtimeMs,
     };
@@ -144,8 +145,8 @@ export function sameWish(a, b) {
 
 const COUNT_RE = /\s+\(wanted ×(\d+)\)\s*$/;
 const stripCount = (t) => t.replace(COUNT_RE, '').trim();
-export function wantLines() {
-  return read(FILES.will).split('\n').map((line, i) => ({ line, i }))
+export function wantLines(rel = FILES.will) {
+  return read(rel).split('\n').map((line, i) => ({ line, i }))
     .filter(({ line }) => /^- \[ \] /.test(line))
     .map(({ line, i }) => {
       const raw = line.slice(6).trim();
@@ -156,19 +157,20 @@ export function wantLines() {
 export function wants() { return wantLines().map((w) => w.text); }
 
 // Returns { added } for a new wish, { counted, count } when it is one I already have.
-export function want(text) {
+// `rel` lets the same counting serve craft.md, where a work call's lessons go instead of the will.
+export function want(text, rel = FILES.will, header = '') {
   const t = stripCount(String(text).trim());
   if (!t) return false;
-  const lines = read(FILES.will).split('\n');
-  const hit = wantLines().find((w) => sameWish(w.text, t));
+  const lines = read(rel).split('\n');
+  const hit = wantLines(rel).find((w) => sameWish(w.text, t));
   if (hit) {
     const count = hit.count + 1;
     lines[hit.i] = `- [ ] ${hit.text} (wanted ×${count})`;
-    write(FILES.will, lines.join('\n'));
+    write(rel, lines.join('\n'));
     return { counted: true, count, text: hit.text };
   }
-  const cur = read(FILES.will);
-  append(FILES.will, (cur === '' || cur.endsWith('\n') ? '' : '\n') + `- [ ] ${t}\n`);
+  const cur = read(rel) || header;
+  write(rel, cur + (cur === '' || cur.endsWith('\n') ? '' : '\n') + `- [ ] ${t}\n`);
   return { added: true, count: 1, text: t };
 }
 export function done(text) {
@@ -208,7 +210,7 @@ export function recall(query, limit = 12) {
   const terms = String(query).toLowerCase().split(/\s+/).filter((t) => t.length > 1);
   if (!terms.length) return [];
   const files = [];
-  for (const rel of [FILES.self, FILES.oath, FILES.will, FILES.journal, FILES.notes, FILES.undercurrents, 'intentions.md', personFile()]) {
+  for (const rel of [FILES.self, FILES.oath, FILES.will, FILES.journal, FILES.notes, FILES.undercurrents, 'intentions.md', 'craft.md', personFile()]) {
     if (fs.existsSync(abs(rel))) files.push(rel);
   }
   const people = abs('people');

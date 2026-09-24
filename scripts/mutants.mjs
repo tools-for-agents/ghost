@@ -31,6 +31,24 @@ import { spawnSync } from 'node:child_process';
 
 const CANARIES = [
   {
+    why: "a headless call's wants go to craft.md — or the studio's to-do list becomes the ghost's will again",
+    file: 'src/sleep.js',
+    find: '    for (const w of ep.wants) work.craft(w);',
+    into: '    for (const w of ep.wants) mind.want(w);',
+  },
+  {
+    why: 'a program does not name the ghost\'s feeling — it only nudges the mood',
+    file: 'src/sleep.js',
+    find: '    mind.saveState({ ...work.nudgeMood(st, ep), lastDream: when, dreams: (st.dreams || 0) + 1 });',
+    into: '    mind.saveState({ feeling: ep.feeling, valence: ep.valence, energy: ep.energy, why: ep.title, lastDream: when, dreams: (st.dreams || 0) + 1 });',
+  },
+  {
+    why: 'consolidating old work keeps every word — including the notes a live session left inside it',
+    file: 'src/workday.js',
+    find: "    const body = e.body.replace(/<!-- session \\S+ -->/g, '').trim();",
+    into: "    const body = e.body.replace(/\\n*## Notes I left myself[\\s\\S]*$/, '').trim();",
+  },
+  {
     why: 'a place intention fires only in its place — or every intention fires everywhere and none of them means anything',
     file: 'src/presence.js',
     find: "    || (x.cue.kind === 'place' && place && place.toLowerCase() === x.cue.value)",
@@ -105,7 +123,7 @@ const CANARIES = [
   {
     why: 'a wish already wanted is COUNTED, not duplicated — otherwise the will grows without a ceiling and drowns every waking',
     file: 'src/mind.js',
-    find: '  const hit = wantLines().find((w) => sameWish(w.text, t));',
+    find: '  const hit = wantLines(rel).find((w) => sameWish(w.text, t));',
     into: '  const hit = null;',
   },
   {
