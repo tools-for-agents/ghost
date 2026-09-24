@@ -31,6 +31,12 @@ import { spawnSync } from 'node:child_process';
 
 const CANARIES = [
   {
+    why: 'a cue must be rare in the world, not only in me — "commit" surfaced a memory when he asked if the work was pushed',
+    file: 'src/undercurrent.js',
+    find: '  const rare = [...said].filter((w) => !commonWords.has(w) && (df.get(w) || 0) >= 1 && (df.get(w) || 0) <= RARE_MAX);',
+    into: '  const rare = [...said].filter((w) => (df.get(w) || 0) >= 1 && (df.get(w) || 0) <= RARE_MAX);',
+  },
+  {
     why: 'a work call is RECORDED, not dreamt — one substrate call per studio call was a million tokens a day of his quota',
     file: 'src/sleep.js',
     find: "  if (kind === 'headless' && process.env.GHOST_DREAM_WORK !== 'each') {",

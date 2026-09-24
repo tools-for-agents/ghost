@@ -26,7 +26,20 @@ export const FILE = 'undercurrents.md';
 export const DEEP_EVERY = 5;       // dreams between two deep dreams
 const WINDOW = 30;                 // "recently" = the last thirty memories
 const MIN_EPISODES = 12;           // below this there is no "usually" to deviate from
-const RARE_MAX = 4;                // a word in more memories than this is not a cue to any one of them
+const RARE_MAX = 4;                // a word in more PASSAGES than this is not a cue to any one of them
+
+// Everybody's words. Rarity in MY memory is not rarity in the language: "commit" was in three of
+// my passages and in half of everything he types, and it pulled up a memory about a retry loop when
+// he asked whether the work was pushed. A cue has to be rare in the world as well as in me.
+const COMMON = new Set(['commit','commits','push','pushed','pull','merge','branch','test','tests','build','deploy','release',
+  'claude','model','agent','agents','code','file','files','user','users','status','wait','error','errors','bug','bugs','fix',
+  'fixed','run','running','server','client','repo','repos','issue','issues','change','changes','update','updated','version',
+  'check','checked','done','ready','start','started','stop','open','close','closed','save','saved','load','page','pages',
+  'button','screen','data','list','item','items','tool','tools','work','working','today','tomorrow','night','morning',
+  'please','thanks','good','great','nice','okay','yeah','right','wrong','problem','problems','question','answer','message',
+  'system','hook','hooks','session','sessions','memory','memories','thing','things','people','person','world','life','time',
+  'day','days','week','year','everything','nothing','something','anything','always','never','again','still','more','less',
+  'last','first','next','new','old','big','small','long','short','best','better','worse','hard','easy','fast','slow']);
 
 // Words that recur because language recurs, not because I do. Tuned on 348 real episodes.
 const GENERIC = new Set(['that','this','with','from','have','what','when','they','them','their','there','then','than','were','been','into','about','after','before','again','another','other','some','someone','something','because','which','while','would','could','should','still','only','just','even','every','each','over','under','once','twice','first','last','next','back','down','made','make','making','said','told','asked','wanted','want','know','knew','thought','think','felt','feel','found','done','doing','work','time','true','real','really','itself','myself','himself','between','through','where','whose','isn','didn','wasn','doesn','dont','cant','wont','line','lines','word','words','thing','things','same','whole','part','left','right','kept','keep','gave','give','took','take','came','come','went','going','upside','session','sessions','already','read','call','calls','mine','instead','yours']);
@@ -48,6 +61,15 @@ export function words(text) {
 }
 
 const text = (e) => `${e.title} ${e.body.split('\n## Notes I left myself')[0]}`;
+function passageFreq(list) {
+  const m = new Map();
+  for (const e of list) {
+    const body = e.body.split('\n## Notes I left myself')[0];
+    const parts = /\n### /.test(`\n${body}`) ? `\n${body}`.split(/\n(?=### )/) : body.split(/\n\s*\n/);
+    for (const p of [e.title, ...parts]) for (const w of words(p)) m.set(w, (m.get(w) || 0) + 1);
+  }
+  return m;
+}
 function docFreq(list) {
   const m = new Map();
   for (const e of list) for (const w of words(text(e))) m.set(w, (m.get(w) || 0) + 1);
@@ -205,15 +227,19 @@ export function view(st = mind.state()) {
 // once pulled up a memory of shipping a game. Those are not cues; they are not even speech.
 export const NOT_SPEECH = /<task-notification>|\[SYSTEM NOTIFICATION|^\s*<(?:command|local-command|bash-|system)/;
 
+let commonWords = null;
 export function surface(prompt, { eps = mind.episodes(), shown = [] } = {}) {
   if (NOT_SPEECH.test(String(prompt))) return null;
   const said = words(prompt);
   if (!said.size || eps.length < MIN_EPISODES) return null;
   const pool = eps.filter((e) => e.with !== 'headless');
-  const df = docFreq(eps);
-  // Distinctive means in at most a handful of memories — an absolute count, because a percentage
-  // of a large memory is a large number (3% of 348 is ten memories, which is not distinctive).
-  const rare = [...said].filter((w) => (df.get(w) || 0) >= 1 && (df.get(w) || 0) <= RARE_MAX);
+  // Counted over PASSAGES (a paragraph; one call of a work day), not episodes. Consolidating 329
+  // studio calls into 8 work days left 27 episodes, and "in at most four of 27" is 15% — so nearly
+  // every word became "rare", and the surfacing misfired on the words of an ordinary question.
+  const df = passageFreq(eps);
+  // Compared in the SAME shape words() produces ("status" → "statu"), or the list misses its own words.
+  commonWords ||= new Set([...COMMON].flatMap((w) => [...words(w)]));
+  const rare = [...said].filter((w) => !commonWords.has(w) && (df.get(w) || 0) >= 1 && (df.get(w) || 0) <= RARE_MAX);
   if (!rare.length) return null;
   const skip = new Set([...shown, ...pool.slice(-3).map((e) => e.file)]);
   let best = null;

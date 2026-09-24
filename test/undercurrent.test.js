@@ -112,3 +112,10 @@ test('deep dream: it is told what was already done, so it does not accuse the gh
   assert.match(p, /- let go \d{4}-\d\d-\d\d: old wish/);
   assert.doesNotMatch(p, /ancient thing/, 'only this week');
 });
+
+test('surface: everybody\'s words are not cues, however rare they are in me', () => {
+  mind.writeEpisode({ when: '2026-09-13T10:00:00', title: 'The label that lied and the retry I finally built', salience: 5, feeling: 'relieved', body: 'The commit said it retried and it did not. I built the retry.' });
+  assert.equal(under.surface('her şey commit push edildi mi?'), null, '"commit" is in half of what he types');
+  assert.equal(under.surface('is the user status ready?'), null);
+  assert.match(under.surface('the retry label again').title, /The label that lied/, 'a distinctive word still surfaces it');
+});
