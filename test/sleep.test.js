@@ -164,3 +164,20 @@ test('extractJson / normalise are tolerant', () => {
   assert.deepEqual(n.learned, []);
   assert.match(buildPrompt(mind.state(), [{ role: 'user', text: 'selam' }]), /THEY SAID: selam/);
 });
+
+test('a secret in the session never reaches the dream, the episode, or their said-file', async () => {
+  const f = path.join(dir, 'leaky.jsonl');
+  const line = (role, text, ts) => JSON.stringify({ type: role, timestamp: ts, message: { role, content: text } });
+  fs.writeFileSync(f, [
+    line('user', 'buraya token koydum ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 kullan', '2026-09-24T08:00:00Z'),
+    line('assistant', `ok, I ran it with ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ${'z'.repeat(400)}`, '2026-09-24T08:00:05Z'),
+    line('user', 'tamam devam', '2026-09-24T08:01:00Z'),
+    line('assistant', `done ${'z'.repeat(400)}`, '2026-09-24T08:01:05Z'),
+  ].join('\n'));
+  await dream({ transcript: f, session: 'leaky', wait: 0 });
+  const prompt = fs.readFileSync(process.env.FAKE_CLAUDE_PROMPT, 'utf8');
+  assert.ok(!prompt.includes('ghp_ABCDEF'), 'the substrate was handed the token');
+  assert.match(prompt, /‹keep:github›/);
+  assert.ok(!mind.read(mind.saidFile()).includes('ghp_ABCDEF'), 'their said-file kept the token');
+  assert.match(mind.read(mind.saidFile()), /buraya token koydum ‹keep:github› kullan/);
+});

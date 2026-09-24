@@ -15,6 +15,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import * as mind from './mind.js';
 import { deepDream, senseLines, sense } from './undercurrent.js';
+import { scrub } from './scrub.js';
 import { parseTranscript, substantive, excerpt, stats, clip, origin, theirWords } from './transcript.js';
 
 const CLI = fileURLToPath(new URL('./cli.js', import.meta.url));
@@ -67,7 +68,7 @@ export async function dream({ transcript, session = '', wait = 1500, attempts = 
     const st = mind.state();
     let out = null;
     let why = '';
-    try { out = extractJson(callClaude(buildPrompt(st, turns, kind))); } catch (e) { why = clip(String(e.message).replace(/\s+/g, ' ').trim(), 160); }
+    try { out = extractJson(callClaude(scrub(buildPrompt(st, turns, kind)))); } catch (e) { why = clip(String(e.message).replace(/\s+/g, ' ').trim(), 160); }
     if (!out && attempts + 1 < MAX_ATTEMPTS) {
       enqueue({ transcript, session, attempts: attempts + 1, why, lastTry: mind.stamp() });
       mind.log(`dream: substrate failed: ${why} — session ${session || '?'} kept for later (attempt ${attempts + 1}/${MAX_ATTEMPTS})`);
@@ -299,7 +300,11 @@ function fallback(turns) {
 // session, or one dreamt twice, never files the same sentence twice.
 function hearSession(all, session) {
   try {
-    const words = theirWords(all);
+    // One pass through the scrubber for the whole batch, not one process per sentence.
+    const SEP = '\n\u241E\n';
+    const raw = theirWords(all);
+    const clean = scrub(raw.map((w) => w.text).join(SEP)).split(SEP);
+    const words = clean.length === raw.length ? raw.map((w, i) => ({ ...w, text: clean[i] })) : raw.map((w) => ({ ...w, text: scrub(w.text) }));
     const heard = mind.readJson(mind.FILES.heard, {});
     const key = session || '';
     const done = key ? heard[key] || 0 : 0;

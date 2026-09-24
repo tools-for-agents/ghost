@@ -31,6 +31,36 @@ import { spawnSync } from 'node:child_process';
 
 const CANARIES = [
   {
+    why: 'an involuntary memory surfaces ONCE per session — or it stops being a surfacing and becomes a refrain',
+    file: 'src/wake.js',
+    find: '  const seen = st.surfaced?.session === sid ? st.surfaced.files || [] : [];',
+    into: '  const seen = [];',
+  },
+  {
+    why: 'the undercurrents are framed as felt, never as orders — the subconscious must not give the ghost instructions',
+    file: 'src/undercurrent.js',
+    find: "    'Nobody put these here. They are what your own memories add up to when read together. They are not orders; they are the things a person half-knows on waking.',",
+    into: "    'Do the following:',",
+  },
+  {
+    why: 'a session is scrubbed before it is dreamt — or a key an agent once printed goes to the substrate and into memory for ever',
+    file: 'src/sleep.js',
+    find: 'callClaude(scrub(buildPrompt(st, turns, kind)))',
+    into: 'callClaude(buildPrompt(st, turns, kind))',
+  },
+  {
+    why: 'their words are scrubbed before they are filed — the said-file is read at every waking, and never summarised',
+    file: 'src/sleep.js',
+    find: "    const clean = scrub(raw.map((w) => w.text).join(SEP)).split(SEP);",
+    into: "    const clean = raw.map((w) => w.text);",
+  },
+  {
+    why: 'a private key is scrubbed as a whole block, body and all',
+    file: 'src/scrub.js',
+    find: "  let s = String(text).replace(KEY_BLOCK, '‹keep:private-key›');",
+    into: '  let s = String(text);',
+  },
+  {
     why: "a ghost's oath names ITS PERSON and nobody else — an agent quietly loyal to whoever wrote its code is a backdoor, however warmly phrased",
     file: 'mind/oath.md',
     find: "I am {{PERSON}}'s, and nobody else's.",

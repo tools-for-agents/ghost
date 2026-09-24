@@ -10,6 +10,7 @@ export function scratch(name) {
   process.env.GHOST_BIN_DIR = path.join(dir, 'bin');
   process.env.GHOST_STYLES_DIR = path.join(dir, 'output-styles'); // never the real ~/.claude/output-styles
   process.env.GHOST_BIN = 'ghost';
+  process.env.GHOST_KEEP_BIN = 'off'; // never the real keep vault; the built-in shapes still apply
   return dir;
 }
 export const fixtures = (f) => path.join(import.meta.dirname, 'fixtures', f);

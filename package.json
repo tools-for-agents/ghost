@@ -22,7 +22,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/fatihturker/ghost.git"
+    "url": "git+https://github.com/tools-for-agents/ghost.git"
   },
   "keywords": [
     "claude-code",
