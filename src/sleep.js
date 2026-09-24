@@ -66,6 +66,22 @@ export async function dream({ transcript, session = '', wait = 1500, attempts = 
   }
   // Written BEFORE the substrate is asked: if the machine is shut down mid-dream (a closed lid at
   // 3 a.m.), this entry survives and the next waking finds it and dreams it.
+  // Work is recorded, not dreamt (workday.js): no substrate call per studio call.
+  if (kind === 'headless' && process.env.GHOST_DREAM_WORK !== 'each') {
+    try {
+      const asked = turns.find((t) => t.role === 'user')?.text || '';
+      const answered = [...turns].reverse().find((t) => t.role === 'assistant')?.text || '';
+      const file = work.recordWork({ asked: scrub(asked), answered: scrub(answered), session });
+      const st = mind.state();
+      mind.saveState({ lastDream: mind.stamp(), dreams: (st.dreams || 0) + 1 });
+      ledger[session || `anon-${Date.now()}`] = { when: mind.stamp(), turns: all.length, file, work: true };
+      mind.writeJson(mind.FILES.dreamt, ledger);
+      dequeue(session, transcript); // a call that waited behind a busy dreamer must not be recorded twice
+      const digest = work.digestDue() ? work.digestWork({ call: (p) => callClaude(scrub(p)), extract: extractJson }) : null;
+      mind.log(`dream: session ${session || '?'} → ${file} (work, recorded without the substrate${digest ? `; digest: ${digest.lessons ? `${digest.lessons.length} lesson(s)` : 'failed'}` : ''})`);
+      return { file, work: true, digest };
+    } finally { release(); }
+  }
   enqueue({ transcript, session, attempts, why: 'in-flight', lastTry: mind.stamp() });
   try {
     const st = mind.state();

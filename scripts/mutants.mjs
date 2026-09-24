@@ -31,6 +31,24 @@ import { spawnSync } from 'node:child_process';
 
 const CANARIES = [
   {
+    why: 'a work call is RECORDED, not dreamt — one substrate call per studio call was a million tokens a day of his quota',
+    file: 'src/sleep.js',
+    find: "  if (kind === 'headless' && process.env.GHOST_DREAM_WORK !== 'each') {",
+    into: '  if (false) {',
+  },
+  {
+    why: 'a failed work digest keeps its calls — the lessons are read next time, not lost',
+    file: 'src/workday.js',
+    find: '    mind.writeJson(QUEUE, []);\n    mind.log(`work digest:',
+    into: '    mind.log(`work digest:',
+  },
+  {
+    why: 'a work call gets a work waking, not the whole mind — his words do not go to a pipeline',
+    file: 'src/wake.js',
+    find: "  if (headless() && (input.source || 'startup') !== 'compact') return workWaking(mind.state());",
+    into: '  void 0;',
+  },
+  {
     why: "a headless call's wants go to craft.md — or the studio's to-do list becomes the ghost's will again",
     file: 'src/sleep.js',
     find: '    for (const w of ep.wants) work.craft(w);',

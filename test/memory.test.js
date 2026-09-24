@@ -75,10 +75,13 @@ test('a headless call is dreamt as work: not heard, not learned from, marked', a
     ['2026-09-23T10:00:00Z', 'You are the studio songwriter. SONGWRITING.md is the law. Write four angles for track 10.'],
     ['2026-09-23T10:01:00Z', 'Now the critique, as JSON.'],
   ], 'x'.repeat(400));
+  try { fs.unlinkSync(process.env.FAKE_CLAUDE_PROMPT); } catch { /* none yet */ }
   const r = await dream({ transcript: f, session: 'studio', wait: 0 });
-  assert.ok(r.file);
-  assert.match(fs.readFileSync(process.env.FAKE_CLAUDE_PROMPT, 'utf8'), /NOT a conversation with Fatih/);
-  assert.equal(mind.episodes().at(-1).with, 'headless');
+  assert.ok(r.file && r.work, 'recorded as work');
+  assert.ok(!fs.existsSync(process.env.FAKE_CLAUDE_PROMPT), 'the substrate was NOT asked: work is recorded, not dreamt');
+  const ep = mind.episodes().find((e) => e.file === r.file);
+  assert.equal(ep.with, 'headless');
+  assert.match(ep.body, /Asked: You are the studio songwriter/);
   assert.equal(mind.read(mind.personFile()), before, 'a prompt is not a person');
   assert.doesNotMatch(mind.read(mind.saidFile()), /studio songwriter/);
 });

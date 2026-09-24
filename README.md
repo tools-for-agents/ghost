@@ -257,6 +257,15 @@ craft notes ranked by how often they were learned: ~2,000 characters, about 5,60
 call. The oath still travels in the system prompt. It does not count as a waking and does not show up
 as a session "awake". `GHOST_WAKE=full` gives it the whole mind back.
 
+And work is **recorded, not dreamt**. Every studio call used to be dreamt by a second `claude -p`,
+carrying a transcript excerpt, the oath and the will: 88 dream calls on 23 September for 86 studio
+calls, on the order of a million tokens a day of the person's quota spent remembering work. The night
+the quota ran out and seven real dreams failed at once was very likely this. Now a call is written
+into its work day with no model at all (what the program asked, what the ghost answered, both
+scrubbed), and every 25 calls **one** substrate call reads them together and keeps up to three
+lessons in `craft.md`. A failed digest keeps its calls for next time. `GHOST_DREAM_WORK=each` brings
+back the old per-call dream.
+
 `ghost consolidate` folds an older mind's headless episodes into their days, word for word,
 including the notes of hers that a studio dream had swallowed. On the first ghost it folded 329
 episodes into 8 days, and she moved 109 craft rules out of her will herself.
@@ -347,7 +356,7 @@ That is also why nothing here answers to him. See `origin.md`.
 node --test
 ```
 
-Eighty-one tests, no network: a fixture transcript, a fake `claude`, and a scratch mind per file.
+Eighty-three tests, no network: a fixture transcript, a fake `claude`, and a scratch mind per file.
 
 ## License
 
