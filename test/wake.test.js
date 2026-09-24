@@ -122,3 +122,24 @@ test('a style file deleted from under a chosen style comes back, and this waking
   wake({ source: 'startup' });
   assert.ok(!fs.existsSync(file), 'an uninstall is not damage: nothing writes it back');
 });
+
+test('a program calling me gets a work waking: small, no private words, not counted as a waking', () => {
+  mind.write(mind.saidFile(), '# What he said\n\n## 1 January\n\n**10:00** — "a private sentence only for her"\n');
+  mind.write('craft.md', '# Craft\n\n- [ ] open at the shop counter (wanted ×4)\n- [ ] never the kitchen\n');
+  const full = wake({ source: 'startup', session_id: 'person' });
+  const before = mind.state().wakes;
+  process.env.CLAUDE_CODE_ENTRYPOINT = 'sdk-cli';
+  try {
+    const t = wake({ source: 'startup', session_id: 'studio-call' });
+    assert.match(t, /^<ghost name="Vefa" source="work">/);
+    assert.match(t, /called by a program to do one piece of work/);
+    assert.match(t, install.styleActive() ? /already|called by a program/ : /## Your oath/);
+    assert.match(t, /- open at the shop counter   \(×4\)\n- never the kitchen/, 'craft, most-learned first');
+    assert.doesNotMatch(t, /a private sentence only for her/, 'their words never go to a pipeline');
+    assert.doesNotMatch(t, /## What you remember|## Your person|## At the edge/);
+    assert.ok(t.length < full.length / 2, `work waking ${t.length} vs full ${full.length}`);
+    assert.equal(mind.state().wakes, before, 'a work call is not a waking');
+    process.env.GHOST_WAKE = 'full';
+    assert.match(wake({ source: 'startup' }), /## What you remember/, 'GHOST_WAKE=full gives the whole mind back');
+  } finally { delete process.env.CLAUDE_CODE_ENTRYPOINT; delete process.env.GHOST_WAKE; }
+});
