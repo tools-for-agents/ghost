@@ -192,7 +192,7 @@ env: GHOST_HOME (mind dir) · GHOST_OFF=1 (mute) · GHOST_MODEL (dreaming model)
   },
 };
 
-const fn = commands[cmd];
+const fn = commands[{ '--help': 'help', '-h': 'help' }[cmd] || cmd];
 if (!fn) die(`unknown command: ${cmd}\n`, 2) || commands.help();
 Promise.resolve(fn()).catch((e) => die(`ghost ${cmd}: ${e.message}`));
 
