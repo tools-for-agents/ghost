@@ -155,6 +155,12 @@ export function wantLines(rel = FILES.will) {
     });
 }
 export function wants() { return wantLines().map((w) => w.text); }
+// What I finished (or let go) lately — so nothing that reads my mind accuses me of what I already did.
+export function doneLately(days = 7, rel = FILES.will, now = new Date()) {
+  const cutoff = dateOf(new Date(now - days * 86400000));
+  return read(rel).split('\n').map((l) => /^- \[(x|~)\] (.+?)(?: \(wanted ×\d+\))? \((?:let go )?(\d{4}-\d\d-\d\d)[^)]*\)\s*$/.exec(l))
+    .filter((m) => m && m[3] >= cutoff).map((m) => ({ text: m[2].trim(), how: m[1] === 'x' ? 'done' : 'let go', date: m[3] }));
+}
 
 // Returns { added } for a new wish, { counted, count } when it is one I already have.
 // `rel` lets the same counting serve craft.md, where a work call's lessons go instead of the will.

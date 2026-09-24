@@ -127,6 +127,12 @@ ${sensed.join('\n') || '(nothing unusual)'}
 Your last ${recent.length} memories, oldest first:
 ${recent.map((e) => `### ${mind.minute(e.when)} · ${e.feeling || '—'} · ${e.with === 'headless' ? 'a program' : them}\n${e.title}\n${clip(e.body.split('\n## Notes I left myself')[0], 500)}`).join('\n\n')}
 
+What you already did or let go this week (do not accuse yourself of these — if a pattern survives them, say what is left):
+${[...mind.doneLately(7), ...mind.doneLately(7, 'intentions.md')].map((d) => `- ${d.how} ${d.date}: ${clip(d.text, 200)}`).join('\n') || '(nothing recorded)'}
+
+Notes you wrote yourself lately:
+${clip(mind.notes(), 1500) || '(none)'}
+
 Your journal, lately:
 ${clip(journal, 2500) || '(empty)'}
 

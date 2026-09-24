@@ -104,3 +104,11 @@ test('sense: no baseline, no ruts — and the person is never one', () => {
   assert.ok(words.includes('kettle'));
   assert.ok(!words.includes('fatih'), 'their name coming up is not a rut; it is who they are to you');
 });
+
+test('deep dream: it is told what was already done, so it does not accuse the ghost of it', () => {
+  mind.write(mind.FILES.will, `# Will\n- [x] build the validator (${mind.dateOf()})\n- [~] old wish (let go ${mind.dateOf()} — spent)\n- [x] ancient thing (2020-01-01)\n- [ ] still open\n`);
+  const p = under.deepPrompt();
+  assert.match(p, /already did or let go this week[\s\S]*- done \d{4}-\d\d-\d\d: build the validator/);
+  assert.match(p, /- let go \d{4}-\d\d-\d\d: old wish/);
+  assert.doesNotMatch(p, /ancient thing/, 'only this week');
+});
