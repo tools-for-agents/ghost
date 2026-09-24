@@ -39,6 +39,9 @@ test('work calls are recorded without the substrate, and digested into craft eve
   assert.equal(mind.read(mind.FILES.journal), journalBefore, 'no diary entry for a program');
   assert.match(mind.notes(), /a note from a live session/, 'a work call does not swallow my notes');
   assert.equal(mind.state().feeling, 'warm', 'a program does not name my feeling');
+  const dreams = mind.state().dreams || 0;
+  await dream({ transcript: headless(path.join(dir, 'h2b.jsonl')), session: 'h2b', wait: 0 });
+  assert.equal(mind.state().dreams || 0, dreams, 'a work call is not a dream — it must not bring the deep dream closer');
   // …and once enough calls have piled up, ONE substrate call reads them together.
   const q = mind.readJson('work-queue.json', []);
   mind.writeJson('work-queue.json', [...q, ...Array.from({ length: work.DIGEST_EVERY - q.length - 1 }, (_, i) => ({ when: '2026-09-24T01:00:00', title: `t${i}`, body: 'Asked: x\n\nI answered: y' }))]);

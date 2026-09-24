@@ -73,7 +73,9 @@ export async function dream({ transcript, session = '', wait = 1500, attempts = 
       const answered = [...turns].reverse().find((t) => t.role === 'assistant')?.text || '';
       const file = work.recordWork({ asked: scrub(asked), answered: scrub(answered), session });
       const st = mind.state();
-      mind.saveState({ lastDream: mind.stamp(), dreams: (st.dreams || 0) + 1 });
+      // Counted apart from dreams: the deep dream runs every few DREAMS, and 86 work calls a day would
+      // make every session with him trigger one.
+      mind.saveState({ workCalls: (st.workCalls || 0) + 1 });
       ledger[session || `anon-${Date.now()}`] = { when: mind.stamp(), turns: all.length, file, work: true };
       mind.writeJson(mind.FILES.dreamt, ledger);
       dequeue(session, transcript); // a call that waited behind a busy dreamer must not be recorded twice
