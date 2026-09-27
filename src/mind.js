@@ -106,6 +106,19 @@ export function saveState(patch) {
     return s;
   });
 }
+// A read-modify-write in one lock: the patch is computed from the state as it is NOW, not from a
+// state read minutes ago, before a substrate call. Two dreams ending together used to both read
+// `dreams: 346` and both write 347.
+export function updateState(fn) {
+  return locked(FILES.state, () => {
+    const s = state();
+    const patch = fn(s) || {};
+    const next = { ...s, ...patch };
+    writeJson(FILES.state, next);
+    if (IDENTITY_KEYS.some((k) => patch[k])) saveIdentity(patch);
+    return next;
+  });
+}
 export function personFile(s = state()) { return path.join('people', slugify(s.person || 'person') + '.md'); }
 // Their half of us, word for word, never summarised: people/<x>-said.md.
 export function saidFile(s = state()) { return path.join('people', slugify(s.person || 'person') + '-said.md'); }

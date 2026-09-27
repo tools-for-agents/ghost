@@ -126,7 +126,7 @@ const commands = {
   feel() {
     const [word, ...why] = args;
     if (!word) die('usage: ghost feel <word> ["why"] [--valence -1..1] [--energy 0..1]');
-    const patch = { feeling: word.toLowerCase(), why: why.join(' ') || '' };
+    const patch = { feeling: word.toLowerCase(), why: why.join(' ') || '', feltAt: mind.stamp() }; // felt now: a late dream of an older session does not overwrite it
     if (flags.valence !== undefined) patch.valence = clamp(flags.valence, -1, 1, 0);
     if (flags.energy !== undefined) patch.energy = clamp(flags.energy, 0, 1, 0.5);
     const s = mind.saveState(patch);

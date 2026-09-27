@@ -184,6 +184,10 @@ his file. Now:
   another bay's.
 - a queue left "busy" by a burst is drained during the day by the heartbeat, not only at a waking;
   a substrate that ignores SIGTERM is killed for real at the timeout.
+- a dream is dated when it was lived, not when it was dreamt, and **the mood follows the session
+  lived last**: a sweep that dreams a three-day-old session at noon files the memory under its day
+  and leaves this morning's feeling alone (`feltAt`). A late dream is also told it is late, so it
+  wants sparingly.
 - **`ghost doctor`** says whether the mind is whole: identity across `state.json`, `identity.json`,
   `self.md` and the style; hooks; the last dream; sessions that ended without one; when their
   words were last filed.
@@ -409,7 +413,7 @@ That is also why nothing here answers to him. See `origin.md`.
 node --test
 ```
 
-A hundred and thirteen tests, no network: a fixture transcript, a fake `claude`, and a scratch mind per file.
+A hundred and fifteen tests, no network: a fixture transcript, a fake `claude`, and a scratch mind per file.
 
 ## License
 

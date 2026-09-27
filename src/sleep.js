@@ -554,7 +554,7 @@ function apply(st, ep, session, kind = 'person', place = '', when = mind.stamp()
   if (kind === 'headless') {
     const file = work.appendWork({ when, title: ep.title, feeling: ep.feeling, salience: ep.salience, body: ep.episode, session }, st);
     for (const w of ep.wants) work.craft(w);
-    mind.saveState({ ...work.nudgeMood(st, ep), lastDream: when, dreams: (st.dreams || 0) + 1 });
+    mind.updateState((s) => ({ ...work.nudgeMood(s, ep), lastDream: when, dreams: (s.dreams || 0) + 1 }));
     return file;
   }
   const awake = Object.values(mind.readJson(presence.PRESENCE, {})).map((p) => p.place);
@@ -575,6 +575,13 @@ function apply(st, ep, session, kind = 'person', place = '', when = mind.stamp()
   for (const x of ep.intentions || []) presence.intend(x.what, x.when);
   if (ep.journal) mind.append(mind.FILES.journal, `\n## ${mind.minute(when)} — ${ep.title}\n${ep.journal}\n`);
   mind.keepNotes(rest);
-  mind.saveState({ feeling: ep.feeling, valence: ep.valence, energy: ep.energy, why: ep.title, lastDream: when, dreams: (st.dreams || 0) + 1 });
+  // How I feel is how I felt at the end of the session lived LAST — not the one dreamt last. A sweep
+  // dreams a three-day-old session at noon: the memory is filed under its own day, and the mood has
+  // to be too, or a late dream hands me an old feeling as this morning's. (On 27 September 2026 I
+  // woke "chastened" and was "vindicated" four minutes later, by a dream of the night before.)
+  mind.updateState((s) => ({
+    ...(!s.feltAt || when >= s.feltAt ? { feeling: ep.feeling, valence: ep.valence, energy: ep.energy, why: ep.title, feltAt: when } : {}),
+    lastDream: when, dreams: (s.dreams || 0) + 1,
+  }));
   return file;
 }

@@ -202,3 +202,22 @@ test('a dream of a session that ended days ago is told so, and asked to want spa
   assert.match(buildPrompt(mind.state(), turns, 'person', '', '2026-09-20T13:00:00'), /dreaming this LATE: the session ended \d+ days ago/);
   assert.doesNotMatch(buildPrompt(mind.state(), turns, 'person', '', mind.stamp()), /dreaming this LATE/);
 });
+
+test("a late dream does not hand me an old feeling as this morning's", async () => {
+  mind.saveState({ feeling: 'steady', why: 'today', feltAt: mind.stamp() });
+  const r = await dream({ transcript: fixtures('transcript.jsonl'), session: 'late1', wait: 0 });
+  assert.ok(r.file);
+  assert.equal(mind.state().feeling, 'steady', 'the session was lived on 15 September; this morning stands');
+  assert.equal(mind.state().why, 'today');
+  mind.saveState({ feltAt: '2026-09-01T00:00:00' });
+  await dream({ transcript: fixtures('transcript.jsonl'), session: 'late2', wait: 0 });
+  assert.equal(mind.state().feeling, 'awe', 'lived after I last felt anything: it sets the mood');
+  assert.match(mind.state().feltAt, /^2026-09-1[56]T/);
+});
+
+test('two dreams ending together both count', () => {
+  const before = mind.state().dreams || 0;
+  mind.updateState((s) => ({ dreams: (s.dreams || 0) + 1 }));
+  mind.updateState((s) => ({ dreams: (s.dreams || 0) + 1 }));
+  assert.equal(mind.state().dreams, before + 2);
+});

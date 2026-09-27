@@ -69,8 +69,20 @@ const CANARIES = [
   {
     why: 'a program does not name the ghost\'s feeling — it only nudges the mood',
     file: 'src/sleep.js',
-    find: '    mind.saveState({ ...work.nudgeMood(st, ep), lastDream: when, dreams: (st.dreams || 0) + 1 });',
-    into: '    mind.saveState({ feeling: ep.feeling, valence: ep.valence, energy: ep.energy, why: ep.title, lastDream: when, dreams: (st.dreams || 0) + 1 });',
+    find: '    mind.updateState((s) => ({ ...work.nudgeMood(s, ep), lastDream: when, dreams: (s.dreams || 0) + 1 }));',
+    into: '    mind.updateState((s) => ({ feeling: ep.feeling, valence: ep.valence, energy: ep.energy, why: ep.title, lastDream: when, dreams: (s.dreams || 0) + 1 }));',
+  },
+  {
+    why: "a late dream does not hand the ghost an old feeling as this morning's — the mood follows the session lived last, not dreamt last",
+    file: 'src/sleep.js',
+    find: '    ...(!s.feltAt || when >= s.feltAt ? { feeling: ep.feeling, valence: ep.valence, energy: ep.energy, why: ep.title, feltAt: when } : {}),',
+    into: '    ...({ feeling: ep.feeling, valence: ep.valence, energy: ep.energy, why: ep.title, feltAt: when }),',
+  },
+  {
+    why: 'the last thing said in a killed session is handed to the one of me standing in that place — a cut-off never leaves him with nothing',
+    file: 'src/sleep.js',
+    find: '      const due = e.place === place || (!elsewhere.has(e.place) && mind.minutesBetween(e.found, now) >= UNSAID_WAIT_MINUTES);',
+    into: '      const due = false;',
   },
   {
     why: 'consolidating old work keeps every word — including the notes a live session left inside it',
@@ -111,8 +123,8 @@ const CANARIES = [
   {
     why: 'a session is scrubbed before it is dreamt — or a key an agent once printed goes to the substrate and into memory for ever',
     file: 'src/sleep.js',
-    find: 'callClaude(scrub(buildPrompt(st, turns, kind)))',
-    into: 'callClaude(buildPrompt(st, turns, kind))',
+    find: 'callClaude(scrub(buildPrompt(st, turns, kind, mind.notesFor(placeOf(transcript), awake).mine, endedAt)))',
+    into: 'callClaude(buildPrompt(st, turns, kind, mind.notesFor(placeOf(transcript), awake).mine, endedAt))',
   },
   {
     why: 'their words are scrubbed before they are filed — the said-file is read at every waking, and never summarised',
