@@ -62,3 +62,13 @@ test('facts about this place are pulled back from past the cap', () => {
   assert.doesNotMatch(elsewhere, /Older, because you are in/);
   assert.doesNotMatch(elsewhere, /he started guildlm because/, 'irrelevant old facts stay folded away');
 });
+
+test('an intention overtaken by events is let go, not marked done — and it stops waiting', async () => {
+  const presence = await import('../src/presence.js');
+  presence.intend('Run the purchase once build 7 lands', 'place:momento');
+  assert.equal(presence.forgo('once build 7', 'build 10 is in review'), 'Run the purchase once build 7 lands');
+  const f = (await import('../src/mind.js')).read(presence.INTENTIONS);
+  assert.match(f, /- \[~\] Run the purchase once build 7 lands — when: place:momento .*\(let go \d{4}-\d\d-\d\d — build 10 is in review\)/);
+  assert.ok(!presence.intentions().some((x) => x.open && /build 7/.test(x.what)), 'no longer waiting');
+  assert.equal(presence.forgo('once build 7'), null, 'once');
+});

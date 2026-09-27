@@ -59,6 +59,18 @@ export function did(words) {
   return hit.what;
 }
 
+// Letting go of an intention is not doing it. Events overtake a thing meant for later — the build
+// it waited for was superseded, he did it himself — and "did" would be a lie in my own hand.
+export function forgo(words, why = '') {
+  const t = String(words).trim().toLowerCase();
+  const lines = mind.read(INTENTIONS).split('\n');
+  const hit = intentions().find((x) => x.open && x.what.toLowerCase().includes(t));
+  if (!hit) return null;
+  lines[hit.i] = lines[hit.i].replace('- [ ] ', '- [~] ') + ` (let go ${mind.dateOf()}${why ? ` — ${why}` : ''})`;
+  mind.write(INTENTIONS, lines.join('\n'));
+  return hit.what;
+}
+
 // Which intentions this moment is the moment for.
 export function due({ place = '', prompt = '', waking = false } = {}) {
   const said = ` ${String(prompt).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/ı/g, 'i')} `;

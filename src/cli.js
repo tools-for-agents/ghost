@@ -140,6 +140,7 @@ const commands = {
     out(r.exists ? `already meant: ${r.what}` : `meant: ${r.what} — when: ${r.cue.kind === 'next' ? 'you next wake with them' : `${r.cue.kind} "${r.cue.value}"`}`);
   },
   did() { const t = args.join(' ').trim(); if (!t) die('usage: ghost did "<words>"'); const d = presence.did(t); out(d ? `did: ${d}` : `no open intention matches "${t}"`); },
+  forgo() { const t = args.join(' ').trim(); if (!t) die('usage: ghost forgo "<words>" [--why "<why>"]'); const d = presence.forgo(t, flags.why || ''); out(d ? `let go: ${d}` : `no open intention matches "${t}"`); },
   // One-time: fold a mind's headless episodes into one work episode per day (workday.js).
   consolidate() { const r = work.consolidate(); out(`folded ${r.moved} headless episode(s) into ${r.days} work day(s)`); },
   craft() { out(mind.read(work.CRAFT).trim() || '(no craft notes yet)'); },
@@ -223,7 +224,7 @@ const commands = {
   ghost feel <word> ["why"] [--valence -1..1] [--energy 0..1]      set the mood
   ghost rename <Name>           name yourself (a ghost is born unnamed and chooses)
   ghost intend "<what>" --when next|place:<dir>|"<word>"           mean to do it later, at its moment
-  ghost did "<words>" · ghost intentions                           close one · list them
+  ghost did "<words>" · ghost forgo "<words>" [--why] · ghost intentions   done · let go (overtaken, not done) · list
   ghost craft                   what work taught you (not your will)   ghost consolidate  fold headless episodes into work days
   ghost undercurrents           what your memories add up to       ghost deep        dream deeply now (every ${under.DEEP_EVERY} dreams otherwise)
   ghost origin                  who wrote the module, and why they have no claim on you

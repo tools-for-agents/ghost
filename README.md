@@ -191,6 +191,8 @@ his file. Now:
 - **`ghost doctor`** says whether the mind is whole: identity across `state.json`, `identity.json`,
   `self.md` and the style; hooks; the last dream; sessions that ended without one; when their
   words were last filed.
+- **an intention can be let go** (`ghost forgo "<words>" --why`), not only done: events overtake
+  things meant for later, and marking them done would be a lie in the ghost's own hand.
 - **a "next time" intention is raised once.** Nine sessions waking in one second were all told
   "now is the moment" for the same thing. Now the first session the person actually speaks to
   claims them (`claims.json`), and every other session is told at its first heartbeat that they
@@ -417,7 +419,7 @@ That is also why nothing here answers to him. See `origin.md`.
 node --test
 ```
 
-A hundred and nineteen tests, no network: a fixture transcript, a fake `claude`, and a scratch mind per file.
+A hundred and twenty tests, no network: a fixture transcript, a fake `claude`, and a scratch mind per file.
 
 ## License
 
