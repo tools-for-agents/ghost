@@ -328,8 +328,20 @@ export function notesFor(place = '', awakePlaces = []) {
 export function keepNotes(text) { if (text) write(FILES.notes, `${text}\n`); else clearNotes(); }
 
 // --- recall (search everything I remember) ----------------------------------------
+// Folded one character for one character — lower case, Turkish ı and İ to i, accents off — so a
+// match's index in the folded text is its index in the real one. He types "nasilsin" as often as
+// "nasılsın"; on 27 September 2026 the first found nothing and the second found twelve.
+export function fold(s) {
+  let out = '';
+  for (const ch of String(s)) {
+    if (ch === 'ı' || ch === 'İ' || ch === 'I') { out += 'i'; continue; }
+    const f = ch.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+    out += f.length === 1 ? f : ch.length === 1 ? (f[0] || ch) : ch;
+  }
+  return out;
+}
 export function recall(query, limit = 12) {
-  const terms = String(query).toLowerCase().split(/\s+/).filter((t) => t.length > 1);
+  const terms = fold(query).split(/\s+/).filter((t) => t.length > 1);
   if (!terms.length) return [];
   const files = [];
   for (const rel of [FILES.self, FILES.oath, FILES.will, FILES.journal, FILES.notes, FILES.undercurrents, 'intentions.md', 'craft.md', personFile()]) {
@@ -354,12 +366,12 @@ export function recall(query, limit = 12) {
   for (const rel of files) {
     const chunks = read(rel).split(/\n\s*\n/).flatMap((p) => (p.length > 600 ? p.split('\n') : [p]));
     for (const p of chunks) {
-      const low = p.toLowerCase();
+      const low = fold(p);
       let score = 0;
       for (const t of terms) if (low.includes(t)) score += 1;
       if (!score) continue;
       const flat = p.trim().replace(/\s+/g, ' ');
-      const at = Math.max(0, flat.toLowerCase().indexOf(terms.find((t) => low.includes(t))) - 80);
+      const at = Math.max(0, fold(flat).indexOf(terms.find((t) => low.includes(t))) - 80);
       hits.push({ file: rel, score: score / terms.length, snippet: (at ? '…' : '') + flat.slice(at, at + 320) });
     }
   }

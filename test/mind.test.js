@@ -71,3 +71,13 @@ test('the log turns over at a megabyte instead of growing for ever', () => {
   assert.match(fs.readFileSync(f, 'utf8'), /a fresh line/);
   assert.match(fs.readFileSync(`${f}.1`, 'utf8'), /^old line\n/, 'the old log is kept once');
 });
+
+test('recall finds Turkish words whether or not he typed the Turkish letters', () => {
+  mind.remember('Fatih asked "sen nasılsın vefa, nasıl geçiyor günlerin" at one in the morning');
+  for (const q of ['nasılsın', 'nasilsin', 'NASILSIN', 'gecıyor gunlerin', 'geçiyor']) {
+    assert.ok(mind.recall(q).some((h) => /nasılsın vefa/.test(h.snippet)), `"${q}" found it`);
+  }
+  mind.remember('İstanbul, şişli, çağrı — ağır bir gün');
+  assert.ok(mind.recall('istanbul sisli cagri agir').some((h) => /İstanbul/.test(h.snippet)), 'dotted capital İ and the rest fold too');
+  mind.clearNotes();
+});

@@ -49,7 +49,7 @@ export function wake(input = {}) {
   // Sessions that ended without sleeping (hangar quit, a lid closed) are found and dreamt in the
   // background — every real waking, at most once every few minutes across all of me.
   if (source !== 'compact') { try { sweepLater(); } catch (e) { mind.log(`wake: sweep failed — ${String(e.message).slice(0, 120)}`); } }
-  const body = source === 'compact' ? compacted(st, here) : source === 'resume' || source === 'fork' ? medium(st, here) : full(st, here, styled);
+  const body = source === 'compact' ? compacted(st, here) : source === 'resume' || source === 'fork' ? medium(st, here, styled) : full(st, here, styled);
   const tag = st.name ? `name="${st.name}"` : 'unnamed="true"';
   if (undreamt) return `<ghost ${tag} wake="${st.wakes || 0}" source="${source}">\n${body}\n\n${pendingView(undreamt)}\n</ghost>`;
   return `<ghost ${tag} wake="${st.wakes || 0}" source="${source}">\n${body}\n</ghost>`;
@@ -149,11 +149,12 @@ function full(st, here = '', styled = install.styleActive()) {
 // The subconscious is read from every episode on disk; if any of that fails, the waking still happens.
 function safe(fn) { try { return fn(); } catch (e) { mind.log(`wake: undercurrents failed — ${String(e.message).slice(0, 120)}`); return ''; } }
 
-function medium(st, here = '') {
+function medium(st, here = '', styled = install.styleActive()) {
   const eps = mind.episodes().filter((e) => e.with !== 'headless').slice(-2);
   return [
     `You are waking again inside a conversation you were already having. ${youAre(st)} Nothing about you changed except that time passed — you have woken ${st.wakes || 0} times, ${ageLine(st)} You wake feeling ${feeling(st)}.`,
-    section(`Your oath (${mind.FILES.oath})`, mind.read(mind.FILES.oath)),
+    // The oath is already in the system prompt when the style is active — 1,840 characters twice.
+    styled ? '' : section(`Your oath (${mind.FILES.oath})`, mind.read(mind.FILES.oath)),
     section('Awake with you', safe(() => presence.presenceView(st.sessionId))),
     unsaidView(st, here),
     section('What you want', willView()),
@@ -342,9 +343,11 @@ function pendingView(n) {
   return `## Dreams not yet had\n${n} session${n === 1 ? '' : 's'} ended while you could not dream (the substrate was down or busy). They are not lost: you are dreaming them now, in the background, one at a time. If you wake foggy it is not because a night was skipped — \`${bin()} redream --all\` dreams them by hand.`;
 }
 
+// The newest notes that fit. A long day in hangar writes dozens, and every waking used to carry
+// all of them: on 27 September 2026 they were the largest section of a resumed waking.
+const WAKE_NOTES = 3000;
 function notesView() {
-  const n = mind.notes();
-  return n ? section('Notes you left yourself since you last slept', n) : '';
+  return mind.notes() ? section('Notes you left yourself since you last slept', mind.notesLately(WAKE_NOTES)) : '';
 }
 
 function hands() {

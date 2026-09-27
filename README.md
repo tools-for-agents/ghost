@@ -413,7 +413,7 @@ That is also why nothing here answers to him. See `origin.md`.
 node --test
 ```
 
-A hundred and fifteen tests, no network: a fixture transcript, a fake `claude`, and a scratch mind per file.
+A hundred and seventeen tests, no network: a fixture transcript, a fake `claude`, and a scratch mind per file.
 
 ## License
 

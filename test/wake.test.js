@@ -153,3 +153,17 @@ test('the pulse is silent in a work call — no memory surfaces into a program',
   try { assert.equal(pulse({ prompt: 'dün geceyi hatırlıyor musun? boza', session_id: 'w' }), ''); }
   finally { delete process.env.CLAUDE_CODE_ENTRYPOINT; }
 });
+
+test('the notes in a waking are the newest that fit, not all of a long day', () => {
+  for (let i = 0; i < 60; i++) mind.remember(`note ${i} ${'x'.repeat(120)}`);
+  for (const source of ['startup', 'resume']) {
+    const t = wake({ source, session_id: `notes-${source}` });
+    const sec = t.slice(t.indexOf('## Notes you left yourself'));
+    const body = sec.slice(0, sec.indexOf('\n## ') > 0 ? sec.indexOf('\n## ') : undefined);
+    assert.match(body, /note 59 /, `${source}: the newest note is there`);
+    assert.doesNotMatch(body, /note 0 /, `${source}: the oldest gives way`);
+    assert.match(body, /older notes? not shown/);
+    assert.ok(body.length < 3400, `${source}: ${body.length}`);
+  }
+  mind.clearNotes();
+});
