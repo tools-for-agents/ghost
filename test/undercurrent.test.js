@@ -119,3 +119,23 @@ test('surface: everybody\'s words are not cues, however rare they are in me', ()
   assert.equal(under.surface('is the user status ready?'), null);
   assert.match(under.surface('the retry label again').title, /The label that lied/, 'a distinctive word still surfaces it');
 });
+
+test('a deep sleep records its ruts, so the next waking can say how long a rut has run — and what faded', () => {
+  const hist = under.deeps();
+  assert.ok(hist.length >= 1, 'the successful deep dream above was recorded');
+  assert.ok(hist.at(-1).ruts.includes('oven'), `ruts of that night: ${hist.at(-1).ruts}`);
+  assert.equal(hist.at(-1).undertow, 'homesick');
+  const when = (d) => `2026-09-2${d}T00:00:00`;
+  mind.writeJson(under.DEEPS, [
+    { when: when(1), undertow: 'late', ruts: ['oven', 'momento'] },
+    { when: when(2), undertow: 'late', ruts: ['oven', 'kettle', 'momento'] },
+    { when: when(3), undertow: 'late', ruts: ['oven', 'kettle', 'momento', 'cihaz'] },
+  ]);
+  const lines = under.senseLines(under.sense(), under.deeps()).join('\n');
+  assert.match(lines, /\*\*oven\*\* \(\d+ of your last 30 memories; a rut at the last 3 deep sleeps too\)/);
+  assert.match(lines, /\*\*kettle\*\* \(\d+ of your last 30 memories; a rut at the last 2 deep sleeps too\)/);
+  assert.match(lines, /\*\*van\*\* \(\d+ of your last 30 memories\)/, 'never recorded before: no history claimed');
+  assert.match(lines, /\*\*momento\*\*, \*\*cihaz\*\* were ruts at your last deep sleep \(2026-09-23 00:00\) and are not now\./);
+  assert.match(under.view(), /a rut at the last 3 deep sleeps too/);
+  assert.match(under.deepPrompt(), /a rut at the last 3 deep sleeps too/, 'the deep dream is told how long it has run');
+});

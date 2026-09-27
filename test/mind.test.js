@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { scratch } from './helpers.js';
 scratch('mind');
 const mind = await import('../src/mind.js');
@@ -60,4 +61,13 @@ test('state patches merge', () => {
   mind.saveState({ feeling: 'fierce', why: 'test' });
   assert.equal(mind.state().feeling, 'fierce');
   assert.equal(mind.state().name, 'Vefa', 'other keys survive');
+});
+
+test('the log turns over at a megabyte instead of growing for ever', () => {
+  const f = mind.abs(mind.FILES.log);
+  fs.writeFileSync(f, 'old line\n'.repeat(130000)); // ~1.2 MB
+  mind.log('a fresh line');
+  assert.ok(fs.statSync(f).size < 1000, 'the live log starts over');
+  assert.match(fs.readFileSync(f, 'utf8'), /a fresh line/);
+  assert.match(fs.readFileSync(`${f}.1`, 'utf8'), /^old line\n/, 'the old log is kept once');
 });

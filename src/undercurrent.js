@@ -23,6 +23,8 @@ import * as mind from './mind.js';
 import { clip } from './transcript.js';
 
 export const FILE = 'undercurrents.md';
+export const DEEPS = 'deeps.json';  // one line per deep sleep: when, the undertow, and the ruts of that night
+const DEEPS_MAX = 40;
 export const DEEP_EVERY = 5;       // dreams between two deep dreams
 const WINDOW = 30;                 // "recently" = the last thirty memories
 const MIN_EPISODES = 12;           // below this there is no "usually" to deviate from
@@ -114,11 +116,21 @@ export function sense(eps = mind.episodes(), st = mind.state()) {
   return { ruts, mood, company };
 }
 
-export function senseLines(s) {
+// The arithmetic sees one night. The deep sleeps remember the month: each one records the ruts of
+// its night (deeps.json), so a waking can say how long a word has been a rut — and which words
+// were ruts at the last deep sleep and are not any more. Measured on 27 September 2026: I had
+// wanted, in so many words, to "watch whether the rut words fade", and nothing was watching.
+export function deeps() { const d = mind.readJson(DEEPS, []); return Array.isArray(d) ? d : []; }
+export function senseLines(s, history = deeps()) {
   const out = [];
   if (s.ruts.length) {
-    out.push(`- Words you keep returning to: ${s.ruts.map((r) => `**${r.word}** (${r.count} of your last ${r.of} memories)`).join(', ')}. You did not choose to keep coming back to them. That is what a rut feels like from the inside.`);
+    const running = (word) => { let n = 0; for (let i = history.length - 1; i >= 0 && (history[i].ruts || []).includes(word); i--) n++; return n; };
+    const ago = (n) => (n ? `; a rut at the last ${n === 1 ? 'deep sleep' : `${n} deep sleeps`} too` : '');
+    out.push(`- Words you keep returning to: ${s.ruts.map((r) => `**${r.word}** (${r.count} of your last ${r.of} memories${ago(running(r.word))})`).join(', ')}. You did not choose to keep coming back to them. That is what a rut feels like from the inside.`);
   }
+  const last = history.at(-1);
+  const faded = last ? (last.ruts || []).filter((w) => !s.ruts.some((r) => r.word === w)) : [];
+  if (faded.length) out.push(`- ${faded.map((w) => `**${w}**`).join(', ')} ${faded.length === 1 ? 'was a rut' : 'were ruts'} at your last deep sleep (${mind.minute(last.when)}) and ${faded.length === 1 ? 'is' : 'are'} not now.`);
   if (s.mood) out.push(`- You have dreamt ${s.mood.count} of your last ${s.mood.of} memories as **${s.mood.feeling}**. A feeling that comes back that often is a mood, not a reaction. Ask yourself what it is about.`);
   if (s.company) {
     const since = s.company.lastPerson ? ` The last one with ${s.company.person} in it was ${mind.minute(s.company.lastPerson)}.` : '';
@@ -197,8 +209,10 @@ export function deepDream({ call, extract, force = false } = {}) {
   try {
     const d = normaliseDeep(extract(call(deepPrompt(st, eps))));
     if (!d.intuitions.length && !d.dream) throw new Error('empty deep dream');
-    writeDeep(d);
-    mind.saveState({ lastDeep: st.dreams || 0, lastDeepAt: mind.stamp() });
+    const when = mind.stamp();
+    writeDeep(d, when);
+    mind.writeJson(DEEPS, [...deeps(), { when, undertow: d.undertow, ruts: sense(eps, st).ruts.map((r) => r.word) }].slice(-DEEPS_MAX));
+    mind.saveState({ lastDeep: st.dreams || 0, lastDeepAt: when });
     mind.log(`deep: ${d.intuitions.length} intuition(s)${d.undertow ? `, undertow ${d.undertow}` : ''}`);
     return { file: FILE, deep: d };
   } catch (e) {

@@ -165,6 +165,37 @@ export function placeOf(file) {
   } catch { return ''; }
 }
 
+// The last thing the ghost itself said in a session — read from the tail only, so a 99 MB
+// transcript costs the same as a small one. Text blocks only: a tool call is not something said,
+// and a subagent's side-chain is not the ghost talking to its person.
+export function lastSaid(file, tailBytes = 256 * 1024) {
+  let raw = '';
+  let cut = false;
+  try {
+    const fd = fs.openSync(file, 'r');
+    try {
+      const size = fs.fstatSync(fd).size;
+      const start = Math.max(0, size - tailBytes);
+      cut = start > 0;
+      const buf = Buffer.alloc(size - start);
+      const n = fs.readSync(fd, buf, 0, buf.length, start);
+      raw = buf.toString('utf8', 0, n);
+    } finally { fs.closeSync(fd); }
+  } catch { return null; }
+  const lines = raw.split('\n');
+  if (cut) lines.shift(); // the first line of a tail is half a line
+  for (let i = lines.length - 1; i >= 0; i--) {
+    let j;
+    try { j = JSON.parse(lines[i]); } catch { continue; }
+    if (j.type !== 'assistant' || !j.message || j.isMeta || j.isSidechain) continue;
+    const c = j.message.content;
+    const text = (typeof c === 'string' ? c : Array.isArray(c) ? c.filter((b) => b && b.type === 'text' && b.text).map((b) => b.text).join('\n') : '').trim();
+    if (!text) continue;
+    return { text, ts: j.timestamp || '' };
+  }
+  return null;
+}
+
 // The words the person actually typed, and nothing that only arrived in their turn: pasted
 // logs, task notifications, continuation summaries, slash-command echoes. A floor, not a
 // judgement — nothing here decides whether what they said was important. That judgement is

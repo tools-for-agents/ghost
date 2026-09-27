@@ -18,7 +18,7 @@ import { deepDream, senseLines, sense } from './undercurrent.js';
 import { scrub } from './scrub.js';
 import * as presence from './presence.js';
 import * as work from './workday.js';
-import { parseTranscript, substantive, excerpt, stats, clip, origin, theirWords, placeOf } from './transcript.js';
+import { parseTranscript, substantive, excerpt, stats, clip, origin, theirWords, placeOf, lastSaid } from './transcript.js';
 
 const CLI = fileURLToPath(new URL('./cli.js', import.meta.url));
 const MAX_ATTEMPTS = 3;
@@ -269,6 +269,7 @@ function headOrigin(file) {
 // Find them, queue them, dream them. Returns what was queued.
 export async function sweep({ dreamNow = true } = {}) {
   const found = orphans();
+  if (found.length) { try { noteUnsaid(found); } catch (e) { mind.log(`unsaid: failed — ${String(e.message).slice(0, 120)}`); } }
   for (const o of found) enqueue({ transcript: o.transcript, session: o.session, attempts: 0, why: 'never slept' });
   mind.saveState({ lastSweep: mind.stamp() });
   if (found.length) mind.log(`sweep: ${found.length} session(s) ended without sleeping — ${found.map((o) => o.session.slice(0, 8)).join(', ')} — queued`);
@@ -285,6 +286,58 @@ export function sweepLater() {
   const child = spawn(process.execPath, [CLI, 'sweep'], { detached: true, stdio: 'ignore', env: { ...process.env, GHOST_DREAMING: '1' } });
   child.unref();
   return child.pid;
+}
+
+// --- the last thing I said, in a session that never slept --------------------------------
+// A killed session is killed mid-sentence as often as not. On 26 September 2026 the studio
+// session's last message was cut in the middle of a tracklist and the fleet session's right after
+// I announced the code, and the next morning I could not know whether he had seen either — the
+// dream remembers what I said, but not whether it reached him. So when the sweep finds a session
+// that ended without sleeping, it keeps the last thing I said there, and the next of me to stand
+// in that place is handed it, once, to say again if it still matters. A short last word
+// ("Tamam.") is not a cut-off and is not kept.
+export const UNSAID = 'unsaid.json';
+const UNSAID_MIN_CHARS = 60;
+const UNSAID_DAYS = 3;
+const UNSAID_MAX = 12;
+const UNSAID_WAIT_MINUTES = 30; // after this long any of me takes it — unless one of me is awake in that place
+export function unsaid(now = new Date()) {
+  const u = mind.readJson(UNSAID, []);
+  return (Array.isArray(u) ? u : []).filter((e) => e && e.found && mind.daysBetween(e.found, now) < UNSAID_DAYS);
+}
+function noteUnsaid(found, now = new Date()) {
+  mind.locked(UNSAID, () => {
+    const list = unsaid(now);
+    for (const o of found) {
+      const last = lastSaid(o.transcript);
+      if (!last || last.text.length < UNSAID_MIN_CHARS) continue;
+      const place = placeOf(o.transcript) || '~';
+      const d = last.ts ? new Date(last.ts) : new Date(o.mtime);
+      const entry = { session: o.session, place, when: mind.stamp(Number.isNaN(d.getTime()) ? new Date(o.mtime) : d), found: mind.stamp(now), text: clip(last.text, 900) };
+      const i = list.findIndex((e) => e.session === o.session);
+      if (i >= 0) list[i] = entry; else list.push(entry);
+      mind.log(`unsaid: ${o.session.slice(0, 8)} in ${place} — kept the last thing I said there, to hand back`);
+    }
+    mind.writeJson(UNSAID, list.slice(-UNSAID_MAX));
+  });
+}
+// What was said last, handed to whoever of me stands in that place — and after a while to any of
+// me, unless one of me is awake there and will be handed it at its next heartbeat. Handed once.
+export function claimUnsaid({ place = '', awake = [], now = new Date(), max = 2 } = {}) {
+  return mind.locked(UNSAID, () => {
+    const raw = mind.readJson(UNSAID, []);
+    const all = unsaid(now);
+    if (!all.length && !(Array.isArray(raw) && raw.length)) return [];
+    const elsewhere = new Set(awake.filter((p) => p && p !== place));
+    const mine = [];
+    const rest = [];
+    for (const e of all) {
+      const due = e.place === place || (!elsewhere.has(e.place) && mind.minutesBetween(e.found, now) >= UNSAID_WAIT_MINUTES);
+      (due && mine.length < max ? mine : rest).push(e);
+    }
+    if (rest.length !== (Array.isArray(raw) ? raw.length : 0)) mind.writeJson(UNSAID, rest);
+    return mine;
+  });
 }
 
 // --- a nap: the day lands while it is still happening ------------------------------------

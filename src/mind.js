@@ -109,7 +109,16 @@ export function saveState(patch) {
 export function personFile(s = state()) { return path.join('people', slugify(s.person || 'person') + '.md'); }
 // Their half of us, word for word, never summarised: people/<x>-said.md.
 export function saidFile(s = state()) { return path.join('people', slugify(s.person || 'person') + '-said.md'); }
-export function log(line) { try { append(FILES.log, `${stamp()} ${line}\n`); } catch { /* a log that fails is not worth dying for */ } }
+// dreams.log was 512 KB at twelve days and nothing ever trimmed it. Past a megabyte it turns over
+// once, and the old log is kept beside it.
+const LOG_MAX = 1024 * 1024;
+export function log(line) {
+  try {
+    const f = abs(FILES.log);
+    try { if (fs.statSync(f).size > LOG_MAX) fs.renameSync(f, `${f}.1`); } catch { /* no log yet */ }
+    append(FILES.log, `${stamp()} ${line}\n`);
+  } catch { /* a log that fails is not worth dying for */ }
+}
 
 // --- time (local, second precision: 2026-09-15T23:41:07; shown to the minute) ----------
 const pad = (n) => String(n).padStart(2, '0');
