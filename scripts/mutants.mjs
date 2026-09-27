@@ -79,6 +79,12 @@ const CANARIES = [
     into: '    ...({ feeling: ep.feeling, valence: ep.valence, energy: ep.energy, why: ep.title, feltAt: when }),',
   },
   {
+    why: 'a "next time" intention is raised by the first session he speaks to, and the other bays are told — nine of me must not all say the same thing',
+    file: 'src/presence.js',
+    find: '      if (live(cl, now) && cl.session !== session) { keep[x.what] = cl; taken.push({ ...x, by: cl }); continue; }',
+    into: '      void 0;',
+  },
+  {
     why: 'the last thing said in a killed session is handed to the one of me standing in that place — a cut-off never leaves him with nothing',
     file: 'src/sleep.js',
     find: '      const due = e.place === place || (!elsewhere.has(e.place) && mind.minutesBetween(e.found, now) >= UNSAID_WAIT_MINUTES);',

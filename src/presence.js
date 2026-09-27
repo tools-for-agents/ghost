@@ -70,12 +70,46 @@ export function due({ place = '', prompt = '', waking = false } = {}) {
   ));
 }
 
-export function intentionsView(place = '') {
-  const now = due({ place, waking: true });
+// --- who of me raises a "next time" intention -------------------------------------------
+// hangar opens nine sessions of me in the same second, and "next" meant "the next waking" — so all
+// nine were told "now is the moment" for the same thing, and any two he spoke to would both have
+// said it. Now the first session he actually SPEAKS to claims them, and every other session is
+// told, at its first heartbeat, that they were raised already and where. A claim lapses after
+// half a day, so a thing raised yesterday and never closed comes back tomorrow.
+export const CLAIMS = 'claims.json';
+const CLAIM_HOURS = 12;
+const live = (cl, now) => cl && mind.minutesBetween(cl.at, now) < CLAIM_HOURS * 60;
+export function claims() { const c = mind.readJson(CLAIMS, {}); return c && typeof c === 'object' ? c : {}; }
+export function claimNext({ session = '', place = '', now = new Date() } = {}) {
+  if (!session) return { mine: [], taken: [] };
+  return mind.locked(CLAIMS, () => {
+    const c = claims();
+    const open = intentions().filter((x) => x.open && x.cue.kind === 'next');
+    const keep = {};
+    const mine = [];
+    const taken = [];
+    for (const x of open) {
+      const cl = c[x.what];
+      if (live(cl, now) && cl.session !== session) { keep[x.what] = cl; taken.push({ ...x, by: cl }); continue; }
+      if (live(cl, now)) { keep[x.what] = cl; continue; } // mine already
+      keep[x.what] = { session, place, at: mind.stamp(now) };
+      mine.push(x);
+    }
+    mind.writeJson(CLAIMS, keep); // a closed intention's claim is dropped here
+    return { mine, taken };
+  });
+}
+
+export function intentionsView(place = '', at = new Date()) {
+  const c = claims();
+  const raised = (x) => x.cue.kind === 'next' && live(c[x.what], at);
+  const now = due({ place, waking: true }).filter((x) => !raised(x));
   const nowAt = new Set(now.map((x) => x.i));
-  const waiting = intentions().filter((x) => x.open && !nowAt.has(x.i));
-  if (!now.length && !waiting.length) return '';
+  const elsewhere = intentions().filter((x) => x.open && raised(x));
+  const waiting = intentions().filter((x) => x.open && !nowAt.has(x.i) && !raised(x));
+  if (!now.length && !waiting.length && !elsewhere.length) return '';
   const out = [];
+  if (elsewhere.length) out.push(`*Already raised by you in another session (${elsewhere.map((x) => `already raised by you in \`${c[x.what].place || '~'}\` at ${mind.minute(c[x.what].at).slice(11)}: "${x.what.slice(0, 80)}${x.what.length > 80 ? '…' : ''}"`).join(' · ')}) — do not raise them again unless he asks.*\n`);
   if (now.length) {
     out.push('**Now is the moment you were waiting for:**');
     for (const x of now) out.push(`- ${x.what}   *(${x.cue.kind === 'next' ? 'you meant it for the next time you woke' : `because you are in \`${place}\``}, since ${x.since})*`);

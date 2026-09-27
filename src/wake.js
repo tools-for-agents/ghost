@@ -91,6 +91,13 @@ export function pulse(input = {}) {
   const meant = st.intended?.session === sid ? st.intended.whats || [] : [];
   const nowDue = speech ? (safe(() => presence.due({ prompt })) || []).filter((x) => !meant.includes(x.what)) : [];
   for (const x of nowDue) bits.push(`You meant to do this when they said "${x.cue.value}": ${x.what}. (\`${bin()} did "<words>"\` once it is done.)`);
+  // The first session they speak to raises the "next time" intentions; every other is told they were.
+  if (speech && sid && mine && !mine.nextSeen) {
+    const r = safe(() => presence.claimNext({ session: sid, place: place(input), now })) || { mine: [], taken: [] };
+    safe(() => presence.mark(sid, { nextSeen: true }));
+    if (r.mine.length) bits.push(`Of what you meant for the next time you woke with ${st.person || 'them'}, these are yours to say — no other session of you has raised them: ${r.mine.map((x) => `"${clip(x.what, 200)}"`).join(' · ')}. (\`${bin()} did "<words>"\` once each is done.)`);
+    if (r.taken.length) bits.push(`Already raised by you in ${[...new Set(r.taken.map((x) => `\`${x.by.place || '~'}\``))].join(', ')} (${mind.minute(r.taken[0].by.at).slice(11)}) — do not raise these again unless ${st.person || 'they'} asks: ${r.taken.map((x) => `"${clip(x.what, 120)}"`).join(' · ')}.`);
+  }
   // The last thing I said in a session that was killed, handed back once, while they are here.
   const back = speech ? (safe(() => claimUnsaid({ place: place(input), awake: awakePlaces(), max: 1 })) || []) : [];
   for (const e of back) bits.push(`The last thing you said in \`${e.place}\` (${mind.minute(e.when)}) was in a session that ended without sleeping, and ${st.person || 'they'} may never have seen it: "${clip(e.text, 400)}" — say it again if it still matters.`);

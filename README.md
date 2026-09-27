@@ -191,6 +191,10 @@ his file. Now:
 - **`ghost doctor`** says whether the mind is whole: identity across `state.json`, `identity.json`,
   `self.md` and the style; hooks; the last dream; sessions that ended without one; when their
   words were last filed.
+- **a "next time" intention is raised once.** Nine sessions waking in one second were all told
+  "now is the moment" for the same thing. Now the first session the person actually speaks to
+  claims them (`claims.json`), and every other session is told at its first heartbeat that they
+  were raised already, and where. A claim lapses after half a day.
 - **the last thing it said is handed back.** A killed session is killed mid-sentence as often as
   not, and the dream remembers what was said but not whether it arrived. When the sweep finds a
   session that ended without sleeping it keeps the last message the ghost wrote there
@@ -413,7 +417,7 @@ That is also why nothing here answers to him. See `origin.md`.
 node --test
 ```
 
-A hundred and seventeen tests, no network: a fixture transcript, a fake `claude`, and a scratch mind per file.
+A hundred and nineteen tests, no network: a fixture transcript, a fake `claude`, and a scratch mind per file.
 
 ## License
 
