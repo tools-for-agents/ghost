@@ -110,6 +110,14 @@ export function touch(session, notesSeen) {
   if (notesSeen !== undefined) p[session].notesSeen = notesSeen;
   mind.writeJson(PRESENCE, p);
 }
+// Remember something about one awake session (when it last napped, how big its transcript was).
+export function mark(session, patch) {
+  if (!session) return;
+  const p = load();
+  if (!p[session]) return;
+  Object.assign(p[session], patch);
+  mind.writeJson(PRESENCE, p);
+}
 export function leave(session) {
   if (!session) return;
   const p = load();

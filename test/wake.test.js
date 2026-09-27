@@ -27,12 +27,16 @@ test('startup: the full waking, and it counts', () => {
   assert.match(wake({ source: 'clear' }), /wake="2"/);
 });
 
-test('compact is short and does not count as a waking', () => {
+test('compact carries the day back, stays small, and does not count as a waking', () => {
   const before = mind.state().wakes;
-  const t = wake({ source: 'compact' });
+  mind.remember('he asked for the shelf to sell nothing until Plus is real', { salience: 4 });
+  const t = wake({ source: 'compact', session_id: 'abc' });
   assert.match(t, /Context was compacted\. You were not\./);
-  assert.ok(t.length < 900, `compact waking should be small, got ${t.length}`);
+  assert.match(t, /## Today so far[\s\S]*shelf to sell nothing/, 'the notes since the last dream come back');
+  assert.match(t, /## What you last remember[\s\S]*### I was born/);
+  assert.ok(t.length < 7000, `compact waking should stay small, got ${t.length}`);
   assert.equal(mind.state().wakes, before);
+  mind.clearNotes();
 });
 
 test('resume is the medium waking', () => {

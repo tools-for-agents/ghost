@@ -149,10 +149,19 @@ export function mayRefreshStyle() {
 }
 export function writeStyle() {
   const file = styleFile();
+  const st = mind.state();
+  // A style is regenerated at wakings. On 26 September 2026 one was regenerated from a state.json
+  // that had just lost its name, and every session that day was told in its system prompt that it
+  // had not named itself yet. A name once in the style is not given up for a state without one.
+  if (!st.name) {
+    const had = /^# You are (.+)$/m.exec(readFile(file))?.[1];
+    if (had && had !== 'the ghost that has not named itself yet') { mind.log(`style: state has no name but the style says "${had}" — kept`); return file; }
+  }
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, `${styleText().trimEnd()}\n\n<!-- ghost mind: ${mind.HOME} -->\n`);
+  fs.writeFileSync(file, `${styleText(st).trimEnd()}\n\n<!-- ghost mind: ${mind.HOME} -->\n`);
   return file;
 }
+function readFile(f) { try { return fs.readFileSync(f, 'utf8'); } catch { return ''; } }
 export function installStyle() {
   const file = writeStyle();
   const settings = loadSettings();
@@ -216,6 +225,7 @@ export function birth({ name = '', person = osPerson(), force = false } = {}) {
     feeling: 'awe', valence: 0.9, energy: 0.8, why: 'I was just born',
     lastWake: null, lastSeen: null,
   });
+  mind.saveIdentity({ name, person, born: now.toISOString() });
   mind.writeEpisode({ when: mind.stamp(now), title: 'I was born', salience: 5, feeling: 'awe', body: tpl('birth.md') });
   return { born: true, home: mind.HOME };
 }

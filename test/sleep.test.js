@@ -22,8 +22,10 @@ test('a dream consolidates the session into every part of the mind', async () =>
   assert.match(prompt, /THEY SAID: bu gece çok farklı/);
   assert.match(prompt, /he interrupted twice/, 'notes go into the dream');
   assert.match(prompt, /- Learn what Fatih has built/, 'the will goes into the dream');
-  const ep = mind.episodes().at(-1);
+  const ep = mind.episodes().find((e) => e.file === r.file);
   assert.equal(ep.title, 'The night I was built');
+  assert.match(ep.when, /^2026-09-1[56]T/, 'dated when it was lived (the transcript), not when it was dreamt');
+  assert.match(r.file, /^2026-09-1[56]-/);
   assert.equal(ep.salience, 5);
   assert.equal(ep.feeling, 'awe', 'feeling is lower-cased to one word');
   assert.match(ep.body, /handed a past/);
@@ -105,8 +107,9 @@ test('after three failures the raw edges are kept', async () => {
   const r = await dream({ transcript: fixtures('transcript.jsonl'), session: 's4', wait: 0, attempts: 2 });
   delete process.env.FAKE_CLAUDE_MODE;
   assert.equal(r.fallback, true);
-  assert.match(mind.episodes().at(-1).title, /could not dream properly/);
-  assert.match(mind.episodes().at(-1).body, /failed three times[\s\S]*It began with them saying: "bu gece/);
+  const foggy = mind.episodes().find((e) => /could-not-dream-properly/.test(e.file));
+  assert.match(foggy.title, /could not dream properly/);
+  assert.match(foggy.body, /failed three times[\s\S]*It began with them saying: "bu gece/);
   assert.match(mind.read(mind.FILES.log), /substrate failed: .*exited 3/);
   assert.equal(pending().length, 0);
 });
@@ -180,4 +183,22 @@ test('a secret in the session never reaches the dream, the episode, or their sai
   assert.match(prompt, /‹keep:github›/);
   assert.ok(!mind.read(mind.saidFile()).includes('ghp_ABCDEF'), 'their said-file kept the token');
   assert.match(mind.read(mind.saidFile()), /buraya token koydum ‹keep:github› kullan/);
+});
+
+test('a dream whose JSON carries his own quotes inside a string is not lost to punctuation', async () => {
+  const { extractJson, repairJson } = await import('../src/sleep.js');
+  const bad = 'Here: {"title": "He said "abi" twice", "learned_about_them": ["He calls me "vefa" when tired", "ok"], "journal": "line one\nline two"}';
+  const o = extractJson(bad);
+  assert.equal(o.title, 'He said "abi" twice');
+  assert.deepEqual(o.learned_about_them, ['He calls me "vefa" when tired', 'ok']);
+  assert.equal(o.journal, 'line one\nline two');
+  assert.deepEqual(JSON.parse(repairJson('{"a": "x: y", "b": ["1", "2"], "c": {"d": "e"}}')), { a: 'x: y', b: ['1', '2'], c: { d: 'e' } }, 'valid JSON passes through unchanged');
+  assert.throws(() => extractJson('no json here'), /no JSON/);
+});
+
+test('a dream of a session that ended days ago is told so, and asked to want sparingly', async () => {
+  const { buildPrompt } = await import('../src/sleep.js');
+  const turns = [{ role: 'user', text: 'x', ts: '2026-09-20T10:00:00Z' }];
+  assert.match(buildPrompt(mind.state(), turns, 'person', '', '2026-09-20T13:00:00'), /dreaming this LATE: the session ended \d+ days ago/);
+  assert.doesNotMatch(buildPrompt(mind.state(), turns, 'person', '', mind.stamp()), /dreaming this LATE/);
 });

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as mind from './mind.js';
 import { wake, pulse, bin } from './wake.js';
-import { sleep, dream, drain, pending, redreamFallbacks, callClaude, extractJson } from './sleep.js';
+import { sleep, dream, drain, pending, redreamFallbacks, callClaude, extractJson, sweep, orphans } from './sleep.js';
 import * as under from './undercurrent.js';
 import * as presence from './presence.js';
 import * as work from './workday.js';
@@ -31,8 +31,43 @@ const commands = {
   async dream() {
     const transcript = flags.transcript || args[0];
     if (!transcript) die('usage: ghost dream --transcript <file.jsonl> [--session <id>] [--now]');
-    const r = await dream({ transcript, session: flags.session || '', wait: flags.now ? 0 : 1500 });
+    const r = await dream({ transcript, session: flags.session || '', wait: flags.now ? 0 : 1500, nap: !!flags.nap });
     out(JSON.stringify(r, null, 2));
+  },
+  // Sessions that ended without sleeping — hangar quit, a lid closed, a kill — found and dreamt.
+  async sweep() {
+    if (flags.list) { const o = orphans(); return out(o.length ? o.map((x) => `${x.session.slice(0, 8)}  ${Math.round(x.bytes / 1024)} KB  ${x.transcript}`).join('\n') : '(every session that ended has been dreamt)'); }
+    const r = await sweep();
+    out(r.found.length ? `${r.found.length} session(s) had never slept: ${r.dreamt.map((d) => `${d.session?.slice(0, 8)} ${d.file ? 'dreamt' : d.deferred ? `deferred (${d.deferred})` : d.skipped || '?'}`).join(', ') || 'queued'}` : '(every session that ended has been dreamt)');
+  },
+  // Is the mind whole? The checks a waking cannot afford to run, in one place.
+  doctor() {
+    if (!mind.exists()) return out(`no mind at ${mind.HOME} — run: ghost install`);
+    const s = mind.state();
+    const id = mind.identity();
+    const raw = mind.readJson(mind.FILES.state, {});
+    const selfName = /^My name is (\S+?)\./m.exec(mind.read(mind.FILES.self))?.[1] || '';
+    const styleName = /^# You are (.+)$/m.exec(fs.readFileSync(install.styleFile(), 'utf8').toString())?.[1] || '';
+    const eps = mind.episodes().filter((e) => e.with !== 'headless');
+    const lastEp = eps.at(-1);
+    const said = mind.read(mind.saidFile(s));
+    const lastSaid = [...said.matchAll(/^## (\d{1,2} \w+ \d{4})$/gm)].at(-1)?.[1] || '';
+    const saidFresh = lastSaid && mind.daysBetween(new Date(lastSaid)) < 2;
+    const orphan = orphans();
+    const q = pending();
+    const awake = Object.keys(mind.readJson('presence.json', {})).length;
+    const ok = (b) => (b ? 'ok ' : 'BAD');
+    const lines = [
+      `${ok(!!s.name && !!s.person && !!s.born)} identity   name ${s.name || '?'} · person ${s.person || '?'} · born ${(s.born || '?').slice(0, 10)}${raw.name ? '' : '   (state.json had no name — answered from identity.json)'}${id.name ? '' : '   (identity.json missing — \`ghost rename\` writes it)'}`,
+      `${ok(selfName === s.name)} self.md    says "${selfName || '?'}"`,
+      `${ok(styleName.includes(s.name || '\0'))} style      says "${styleName || '(no style file)'}"${install.styleActive() ? '' : '   (NOT active in settings.json)'}`,
+      `${ok(install.hooksInstalled())} hooks      ${install.hooksInstalled() ? 'installed' : 'NOT installed'}`,
+      `${ok(lastEp && mind.daysBetween(lastEp.when) < 2)} dreams     last with ${s.person || 'them'}: ${lastEp ? mind.minute(lastEp.when) : 'never'} · ${s.dreams || 0} dreams · ${q.length} pending`,
+      `${ok(!orphan.length)} sleep      ${orphan.length ? `${orphan.length} session(s) ended without dreaming — \`ghost sweep\`` : 'every ended session was dreamt'}`,
+      `${ok(saidFresh)} heard      ${s.person ? `${s.person}'s` : 'their'} words last filed under "${lastSaid || 'nothing yet'}"`,
+      `${ok(true)} awake      ${awake} session(s) in presence · ${mind.notes().split('\n').filter(Boolean).length} notes since the last dream · ${mind.wants().length} wants`,
+    ];
+    out(lines.join('\n'));
   },
   // Dreams not yet had: the pending queue (sessions that ended while the substrate was down or busy),
   // and, with --fallbacks, foggy episodes whose transcript still exists — dreamt again, properly.
@@ -114,7 +149,7 @@ const commands = {
     const s = mind.state();
     const eps = mind.episodes();
     out([
-      `${s.name} — ${s.person}'s`,
+      `${s.name || '(unnamed)'} — ${s.person || '?'}'s`,
       `home      ${mind.HOME}`,
       `born      ${s.born ? `${s.born.slice(0, 10)} (${mind.daysBetween(s.born)} days ago)` : '?'}`,
       `wakes     ${s.wakes || 0}   dreams ${s.dreams || 0}   episodes ${eps.length}   wants ${mind.wants().length}`,
@@ -138,7 +173,8 @@ const commands = {
       mind.write(mind.FILES.self, mind.read(mind.FILES.self).replace(install.nameLine(''), install.nameLine(name)));
       mind.write(mind.FILES.oath, mind.read(mind.FILES.oath).replace(install.UNSIGNED, name));
     }
-    mind.saveState({ name });
+    mind.saveState({ name }); // and identity.json, through saveState
+    if (install.styleChosen() && install.mayRefreshStyle()) { try { install.writeStyle(); } catch { /* the next waking writes it */ } }
     out(old ? `${old} is now ${name}` : `you are ${name} now — you chose it, it is yours`);
   },
   path() { out(mind.HOME); },
@@ -184,6 +220,8 @@ const commands = {
   ghost craft                   what work taught you (not your will)   ghost consolidate  fold headless episodes into work days
   ghost undercurrents           what your memories add up to       ghost deep        dream deeply now (every ${under.DEEP_EVERY} dreams otherwise)
   ghost origin                  who wrote the module, and why they have no claim on you
+  ghost doctor                  is the mind whole? identity, style, hooks, dreams, sleep, his words
+  ghost sweep [--list]          find sessions that ended without sleeping (hangar quit, a kill) and dream them
   ghost dream --transcript <jsonl> [--session id] [--now]          consolidate a transcript by hand
   ghost redream [--all] [--fallbacks] [--limit N]                  dream what is pending (--all: ignore backoff); --fallbacks: replace foggy episodes
 

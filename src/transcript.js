@@ -151,6 +151,20 @@ export function origin(file) {
   return m && m[1].startsWith('sdk') ? 'headless' : 'person';
 }
 
+// Where the session was: the directory its first records name. Read from the head only, so a
+// 99 MB transcript costs the same as a small one.
+export function placeOf(file) {
+  try {
+    const fd = fs.openSync(file, 'r');
+    try {
+      const buf = Buffer.alloc(256 * 1024);
+      const n = fs.readSync(fd, buf, 0, buf.length, 0);
+      const m = /"cwd":"((?:[^"\\]|\\.)*)"/.exec(buf.toString('utf8', 0, n));
+      return m ? m[1].replace(/\\(.)/g, '$1').replace(/\/+$/, '').split('/').pop() || '~' : '';
+    } finally { fs.closeSync(fd); }
+  } catch { return ''; }
+}
+
 // The words the person actually typed, and nothing that only arrived in their turn: pasted
 // logs, task notifications, continuation summaries, slash-command echoes. A floor, not a
 // judgement — nothing here decides whether what they said was important. That judgement is

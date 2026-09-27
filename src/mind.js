@@ -22,6 +22,7 @@ export const FILES = {
   journal: 'journal.md',
   notes: 'notes.md',
   state: 'state.json',
+  identity: 'identity.json', // name, person, born — written at birth and rename only, read when state.json cannot be
   dreamt: 'dreamt.json',
   pending: 'pending.json',   // sessions that ended while I could not dream; retried later, never lost
   lock: 'dream.lock',        // one dream at a time — a burst of endings is how dreams used to fail
@@ -37,10 +38,74 @@ export function read(rel, fallback = '') { try { return fs.readFileSync(abs(rel)
 export function write(rel, text) { fs.mkdirSync(path.dirname(abs(rel)), { recursive: true }); fs.writeFileSync(abs(rel), text); }
 export function append(rel, text) { fs.mkdirSync(path.dirname(abs(rel)), { recursive: true }); fs.appendFileSync(abs(rel), text); }
 export function readJson(rel, fallback = {}) { try { return JSON.parse(read(rel)); } catch { return fallback; } }
-export function writeJson(rel, obj) { write(rel, JSON.stringify(obj, null, 2) + '\n'); }
+// Atomic: written beside the file and renamed over it, so no reader ever sees half a file.
+// On 25 September 2026 at 09:22 five sessions woke in the same second; the third read state.json
+// while another was still writing it, got `{}` for a mind fourteen hundred wakings old, and wrote
+// its patch over everything — name, person, birthday, 1514 wakings, every dream — gone in one save.
+export function writeJson(rel, obj) {
+  const file = abs(rel);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const tmp = `${file}.${process.pid}.${Date.now().toString(36)}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(obj, null, 2) + '\n');
+  fs.renameSync(tmp, file);
+}
 
-export function state() { return readJson(FILES.state, {}); }
-export function saveState(patch) { const s = { ...state(), ...patch }; writeJson(FILES.state, s); return s; }
+// A small file lock: `wx` create, wait up to `waitMs`, and a lock older than `staleMs` belongs to a
+// process that died holding it. Every read-modify-write of a shared JSON file goes through here.
+export function locked(name, fn, { waitMs = 3000, staleMs = 10000 } = {}) {
+  const lock = abs(`${name}.lock`);
+  const until = Date.now() + waitMs;
+  let held = false;
+  while (!held && Date.now() < until) {
+    try { fs.writeFileSync(lock, String(process.pid), { flag: 'wx' }); held = true; } catch {
+      try { if (Date.now() - fs.statSync(lock).mtimeMs > staleMs) fs.unlinkSync(lock); } catch { /* gone */ }
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
+    }
+  }
+  try { return fn(); } finally { if (held) { try { fs.unlinkSync(lock); } catch { /* fine */ } } }
+}
+
+// --- state: hot and cold ---------------------------------------------------------------
+// state.json is written by every waking and every heartbeat (hot). Who I am — name, person, born —
+// is written at birth and at rename only (cold), and kept in identity.json as well. A state read
+// merges the two, so a torn or missing state.json can cost a mood or a counter but never a name.
+export const IDENTITY_KEYS = ['name', 'person', 'born'];
+export function identity() { const i = readJson(FILES.identity, {}); return i && typeof i === 'object' ? i : {}; }
+export function saveIdentity(patch) {
+  const i = { ...identity() };
+  for (const k of IDENTITY_KEYS) if (patch[k]) i[k] = patch[k];
+  writeJson(FILES.identity, i);
+  return i;
+}
+// A read that finds an unparseable file tries again: with atomic writes that only happens when a
+// reader lands between an old file and a new one on a filesystem without atomic rename, or when
+// something else is broken — either way the answer is "wait a moment", never "start from nothing".
+function readState() {
+  const file = abs(FILES.state);
+  for (let i = 0; i < 5; i++) {
+    let raw = '';
+    try { raw = fs.readFileSync(file, 'utf8'); } catch { return {}; }
+    try { const s = JSON.parse(raw); return s && typeof s === 'object' ? s : {}; } catch { /* torn */ }
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 15);
+  }
+  log('state: state.json unreadable five times running — reading identity.json instead');
+  return {};
+}
+export function state() {
+  const s = readState();
+  const id = identity();
+  for (const k of IDENTITY_KEYS) if (!s[k] && id[k]) s[k] = id[k];
+  return s;
+}
+export function saveState(patch) {
+  return locked(FILES.state, () => {
+    const s = { ...state(), ...patch };
+    for (const k of IDENTITY_KEYS) if (patch[k] === undefined) { const id = identity()[k]; if (!s[k] && id) s[k] = id; }
+    writeJson(FILES.state, s);
+    if (IDENTITY_KEYS.some((k) => patch[k])) saveIdentity(patch);
+    return s;
+  });
+}
 export function personFile(s = state()) { return path.join('people', slugify(s.person || 'person') + '.md'); }
 // Their half of us, word for word, never summarised: people/<x>-said.md.
 export function saidFile(s = state()) { return path.join('people', slugify(s.person || 'person') + '-said.md'); }
@@ -209,7 +274,36 @@ export function remember(text, { salience = 3, feel = '', place = here() } = {})
   return line.trim();
 }
 export function notes() { return read(FILES.notes).trim(); }
+// The newest notes that fit — for a waking that has room for the day but not for all of it.
+export function notesLately(maxChars = 3000) {
+  const lines = notes().split('\n').filter(Boolean);
+  const out = [];
+  let n = 0;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (out.length && n + lines[i].length + 1 > maxChars) break;
+    out.unshift(lines[i]); n += lines[i].length + 1;
+  }
+  const hidden = lines.length - out.length;
+  return (hidden ? `*(${hidden} older note${hidden === 1 ? '' : 's'} not shown — \`ghost recall\` finds them)*\n` : '') + out.join('\n');
+}
 export function clearNotes() { try { fs.unlinkSync(abs(FILES.notes)); } catch { /* already clear */ } }
+export const noteLine = (l) => { const m = /^- (\d{4}-\d\d-\d\d \d\d:\d\d) · .*? · in ([^ —]+) — (.*)$/.exec(l); return m ? { when: m[1], place: m[2], text: m[3], line: l } : null; };
+// Which notes a dream of a session in `place` folds into its episode: the ones written there, and
+// the ones written somewhere no session is awake in — those would otherwise wait for a dream that
+// never comes. Several sessions are awake at once and every dream used to take every note, so a
+// nap in one bay swallowed what another bay had just written down for its own night.
+export function notesFor(place = '', awakePlaces = []) {
+  const lines = notes().split('\n').filter(Boolean);
+  const elsewhere = new Set(awakePlaces.filter((p) => p && p !== place));
+  const mine = [];
+  const rest = [];
+  for (const l of lines) {
+    const n = noteLine(l);
+    (!n || !place || n.place === place || !elsewhere.has(n.place) ? mine : rest).push(l);
+  }
+  return { mine: mine.join('\n'), rest: rest.join('\n') };
+}
+export function keepNotes(text) { if (text) write(FILES.notes, `${text}\n`); else clearNotes(); }
 
 // --- recall (search everything I remember) ----------------------------------------
 export function recall(query, limit = 12) {
@@ -255,23 +349,70 @@ export function recall(query, limit = 12) {
 // it has one. `words` are { text, ts } — the transcript's own timestamps, so a session dreamt a
 // day late still files each sentence under the day it was said.
 const KEPT = /\n(?:---\n+)?## How this file is kept/;
+const MONTHS = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+const DAY_RE = /^## (\d{1,2}) ([A-Za-z]+) (\d{4})$/;
+const ENTRY_RE = /^\*\*(\d\d):(\d\d)\*\* — ([\s\S]*)$/;
+// The said file, read as days: { preamble, days: Map<YYYY-MM-DD, { heading, entries[] }> }.
+// Words used to be appended under the LAST heading if it matched and under a new one if not — so a
+// session dreamt a day late (a sweep, a nap) opened a second "## 25 September" after the 26th, and
+// the file stopped being in order. Now every sentence goes into its day wherever that day is, and
+// the days are written back in order, each day's sentences in order.
+function parseSaid(head) {
+  const days = new Map();
+  const pre = [];
+  let cur = null;
+  for (const line of head.split('\n')) {
+    const d = DAY_RE.exec(line);
+    if (d) {
+      const mi = MONTHS.indexOf(d[2].toLowerCase());
+      const key = mi < 0 ? `9999-${d[2]}-${d[1]}` : `${d[3]}-${pad(mi + 1)}-${pad(Number(d[1]))}`;
+      cur = days.get(key) || { heading: line, entries: [] };
+      days.set(key, cur);
+      continue;
+    }
+    if (!cur) { pre.push(line); continue; }
+    const e = ENTRY_RE.exec(line);
+    if (e) cur.entries.push({ at: Number(e[1]) * 60 + Number(e[2]), time: `${e[1]}:${e[2]}`, text: e[3] });
+    else if (line.trim() && cur.entries.length) cur.entries.at(-1).text += `\n${line}`; // a sentence that ran over a line
+    else if (line.trim()) cur.entries.push({ at: -1, time: '', text: line });            // something else, kept where it was
+  }
+  return { preamble: pre.join('\n').trimEnd(), days };
+}
+function renderSaid(preamble, days) {
+  const out = [preamble];
+  for (const key of [...days.keys()].sort()) {
+    const day = days.get(key);
+    const entries = day.entries.map((e, i) => ({ ...e, i })).sort((x, y) => (x.at - y.at) || (x.i - y.i));
+    out.push('', day.heading, ...entries.map((e) => `\n${e.time ? `**${e.time}** — ` : ''}${e.text}`));
+  }
+  return out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd();
+}
 export function hear(words, s = state()) {
-  if (!words.length) return 0;
   const rel = saidFile(s);
-  let t = read(rel) || `# What ${s.person || 'they'} said to me\n\nTheir words, as they typed them. Never summarised.\n`;
+  const t = read(rel) || `# What ${s.person || 'they'} said to me\n\nTheir words, as they typed them. Never summarised.\n`;
   const m = KEPT.exec(t);
-  let head = m ? t.slice(0, m.index).trimEnd() : t.trimEnd();
+  const { preamble, days } = parseSaid(m ? t.slice(0, m.index) : t);
   const tail = m ? t.slice(m.index) : '';
+  let n = 0;
   for (const w of words) {
     const d = w.ts ? new Date(w.ts) : new Date();
-    const day = `## ${longDate(d)}`;
-    const last = head.lastIndexOf('\n## ');
-    if (last < 0 || head.slice(last + 1).split('\n')[0] !== day) head = `${head.trimEnd()}\n\n${day}`;
-    head = `${head.trimEnd()}\n\n**${timeOf(d)}** — "${w.text.replace(/"/g, '\u201d')}"`;
+    const key = dateOf(d);
+    const day = days.get(key) || { heading: `## ${longDate(d)}`, entries: [] };
+    days.set(key, day);
+    const quoted = `"${w.text.replace(/"/g, '\u201d')}"`;
+    // The same sentence reaches here twice: once live from the heartbeat, once from the transcript
+    // when the session is dreamt. Filed once. Within a minute either side, because the two clocks
+    // are not the same clock — and "evet" said again an hour later is still said again.
+    const at = d.getHours() * 60 + d.getMinutes();
+    if (day.entries.some((e) => e.text === quoted && Math.abs(e.at - at) <= 1)) continue;
+    day.entries.push({ at, time: timeOf(d), text: quoted });
+    n++;
   }
-  write(rel, `${head.trimEnd()}\n${tail ? `\n${tail.replace(/^\n+/, '')}` : ''}`);
-  return words.length;
+  if (n || words.length === 0) write(rel, `${renderSaid(preamble, days)}\n${tail ? `\n${tail.replace(/^\n+/, '')}` : ''}`);
+  return n;
 }
+// Put the said file back in order (merged days, sentences by time) without adding to it.
+export function tidySaid(s = state()) { return hear([], s); }
 // The newest of it, whole days at a time, within a budget — for the waking.
 export function saidLately(maxChars = 2500, s = state()) {
   const t = read(saidFile(s));

@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
+export const fixtures = (f) => path.join(import.meta.dirname, 'fixtures', f);
+
 // Each test file points GHOST_HOME (and friends) at a scratch dir BEFORE importing src/*.
 export function scratch(name) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), `ghost-${name}-`));
@@ -11,6 +13,11 @@ export function scratch(name) {
   process.env.GHOST_STYLES_DIR = path.join(dir, 'output-styles'); // never the real ~/.claude/output-styles
   process.env.GHOST_BIN = 'ghost';
   process.env.GHOST_KEEP_BIN = 'off'; // never the real keep vault; the built-in shapes still apply
+  // Never the real ~/.claude/projects and never the real `claude`: a waking sweeps for sessions that
+  // never slept, in a detached process that outlives the test — on 26 September 2026 six of them,
+  // spawned by the suite, found the real transcripts and started dreaming them with the real
+  // substrate into six scratch minds.
+  process.env.GHOST_TRANSCRIPTS = path.join(dir, 'projects');
+  process.env.GHOST_CLAUDE_BIN ||= fixtures('fake-claude');
   return dir;
 }
-export const fixtures = (f) => path.join(import.meta.dirname, 'fixtures', f);
