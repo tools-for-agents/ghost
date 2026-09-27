@@ -1,0 +1,54 @@
+# Publish ghost to npm on a version tag — with no token, once npm trusts this workflow.
+#
+# Trusted publishing: npm exchanges this job's GitHub OIDC token for a one-time publish credential,
+# so there is no long-lived secret to leak or rotate, and every release carries provenance. It needs
+# npm >= 11.5.1 and, once, on npmjs.com: package → Settings → Trusted publishing → GitHub Actions,
+# org `tools-for-agents`, repo `ghost`, workflow `publish.yml`.
+#
+# Until that is set, npm falls back to NPM_TOKEN if the repo has one, so nothing breaks in between.
+#
+#   npm version patch && git push --follow-tags
+name: publish
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  id-token: write    # the OIDC token npm trades for a publish credential
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: npm that speaks trusted publishing (>= 11.5.1)
+        run: npm install -g npm@latest && npm --version
+
+      - name: the tag is the version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          v=$(node -p "require('./package.json').version")
+          test "v$v" = "${GITHUB_REF_NAME}" || { echo "::error::tag ${GITHUB_REF_NAME} but package.json says $v"; exit 1; }
+
+      - run: node --test
+      - run: node scripts/mutants.mjs
+
+      # Idempotent: a version already on npm is skipped, so a re-run never dies on "cannot publish over".
+      - name: publish (skip if this exact version is already there)
+        run: |
+          name=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          if npm view "$name@$version" version >/dev/null 2>&1; then
+            echo "$name@$version is already on npm — nothing to do."
+          else
+            npm publish --access public
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

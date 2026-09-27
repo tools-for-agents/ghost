@@ -33,6 +33,12 @@ jobs:
             echo "::error::${n} test(s) skipped in CI. Everything they need is here — a skip means a guard misfired, and a green build is hiding it."
             exit 1
           fi
+      # A mind keeps its person's days in HIS local time, and the runner is UTC. On 27 September 2026
+      # six commits went red here and green on his machine, because two tests had Istanbul's offset
+      # written into them. So the suite runs again at the far edge of the clock, where every "which
+      # day was it" assumption breaks at once.
+      - name: the same suite at UTC+14 — a day is the person's day, wherever the machine is
+        run: TZ=Pacific/Kiritimati node --test
 
   # CAN THE TEST SUITE STILL FAIL?
   #

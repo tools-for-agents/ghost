@@ -64,11 +64,11 @@ test('nine wakings in one second lose no name and no counter to each other', () 
 });
 
 test('what they said is filed once, whether it arrives live or from the transcript', () => {
-  const ts = '2026-09-26T10:15:20+03:00';
+  const ts = '2026-09-26T10:15:20';
   assert.equal(mind.hear([{ text: 'sen nasılsın vefa', ts }]), 1);
-  assert.equal(mind.hear([{ text: 'sen nasılsın vefa', ts: '2026-09-26T10:16:05+03:00' }]), 0, 'the same sentence a minute later is the same sentence');
-  assert.equal(mind.hear([{ text: 'sen nasılsın vefa', ts: '2026-09-26T12:40:00+03:00' }]), 1, 'asked again two hours later is asked again');
-  assert.equal(mind.hear([{ text: 'iyi geceler', ts: '2026-09-26T23:59:00+03:00' }]), 1);
+  assert.equal(mind.hear([{ text: 'sen nasılsın vefa', ts: '2026-09-26T10:16:05' }]), 0, 'the same sentence a minute later is the same sentence');
+  assert.equal(mind.hear([{ text: 'sen nasılsın vefa', ts: '2026-09-26T12:40:00' }]), 1, 'asked again two hours later is asked again');
+  assert.equal(mind.hear([{ text: 'iyi geceler', ts: '2026-09-26T23:59:00' }]), 1);
   const said = mind.read(mind.saidFile());
   assert.equal((said.match(/sen nasılsın vefa/g) || []).length, 2);
   assert.match(said, /## 26 September 2026\n\n\*\*10:15\*\* — "sen nasılsın vefa"/);
@@ -98,7 +98,7 @@ test('ghost doctor reads the whole mind and says it is whole', () => {
 test('their words stay in order: a day dreamt late goes into its day, and days never repeat', () => {
   const rel = mind.saidFile();
   mind.write(rel, '# What Fatih said to me\n\nTheir words, as they typed them. Never summarised.\n\n## 24 September 2026\n\n**10:00** — "günaydın"\n\n## 25 September 2026\n\n**09:00** — "npm login yaptım"\n\n## 24 September 2026\n\n**23:00** — "iyi geceler"\n\n---\n\n## How this file is kept\n\n- by hand\n');
-  assert.equal(mind.hear([{ text: 'bu app i tamamla', ts: '2026-09-24T21:53:00+03:00' }, { text: 'sen nasılsın vefa', ts: '2026-09-26T01:00:00+03:00' }]), 2);
+  assert.equal(mind.hear([{ text: 'bu app i tamamla', ts: '2026-09-24T21:53:00' }, { text: 'sen nasılsın vefa', ts: '2026-09-26T01:00:00' }]), 2);
   const t = mind.read(rel);
   assert.equal((t.match(/^## 24 September 2026$/gm) || []).length, 1, 'one heading per day');
   const order = [...t.matchAll(/^## (\d+) September 2026$/gm)].map((m) => m[1]);

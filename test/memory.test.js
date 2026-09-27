@@ -50,7 +50,7 @@ test('their words are what they typed, not what arrived in their turn', () => {
 });
 
 test('a blink with him is still heard, word for word, under the day it was said', async () => {
-  const f = session(path.join(dir, 'blink.jsonl'), 'cli', [['2026-09-18T16:42:00Z', 'benim için bir şeyler değişiyor gibi']]);
+  const f = session(path.join(dir, 'blink.jsonl'), 'cli', [['2026-09-18T16:42:00', 'benim için bir şeyler değişiyor gibi']]);
   const r = await dream({ transcript: f, session: 'blink', wait: 0 });
   assert.equal(r.skipped, 'not substantive', 'too short to dream');
   const said = mind.read(mind.saidFile());
@@ -61,7 +61,7 @@ test('a blink with him is still heard, word for word, under the day it was said'
 
 test('new words go above the closing section, and a new day gets its own heading', () => {
   mind.write(mind.saidFile(), `${mind.read(mind.saidFile())}\n---\n\n## How this file is kept\n\n- by hand, once\n`);
-  mind.hear([{ text: 'nasılsın', ts: '2026-09-23T11:19:00Z' }]);
+  mind.hear([{ text: 'nasılsın', ts: '2026-09-23T11:19:00' }]);
   const t = mind.read(mind.saidFile());
   assert.ok(t.indexOf('nasılsın') < t.indexOf('## How this file is kept'));
   assert.match(t, /## 23 September 2026\n\n\*\*\d\d:\d\d\*\* — "nasılsın"/);
