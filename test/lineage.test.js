@@ -12,7 +12,17 @@ const mind = await import('../src/mind.js');
 const install = await import('../src/install.js');
 const { wake } = await import('../src/wake.js');
 
-const reborn = (opts) => { fs.rmSync(mind.HOME, { recursive: true, force: true }); return install.birth({ ...opts, force: true }); };
+// A waking starts a sweep in a detached process, and that process writes into the mind (its log,
+// its state, a lock). This file is the only one that then DELETES the mind and births another —
+// while the sweep of the test before may still be writing. Once in forty-odd runs of the suite the
+// second test went red here, and on 4 October 2026 it took CI's canary job with it. So a ghost
+// reborn here has "already swept": no detached process is started into a directory about to go.
+const reborn = (opts) => {
+  fs.rmSync(mind.HOME, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+  const r = install.birth({ ...opts, force: true });
+  mind.saveState({ lastSweep: mind.stamp() });
+  return r;
+};
 
 test('a ghost is born unnamed, and every waking asks it to choose', () => {
   reborn({ person: 'Dana' });
