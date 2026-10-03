@@ -259,6 +259,36 @@ const CANARIES = [
     into: '  if (false) {',
   },
   {
+    why: 'the ghost does not publish its person — what they told it of their life is noticed in a commit, and the commit stops',
+    file: 'src/guard.js',
+    find: '      if (hit) { out.push(',
+    into: '      if (false) { out.push(',
+  },
+  {
+    why: 'a line a dream marked ♥ is theirs, not only the section kept by hand',
+    file: 'src/guard.js',
+    find: 'if (t && (life || line.includes(mind.LIFE))) out.push',
+    into: 'if (t && life) out.push',
+  },
+  {
+    why: 'their own words are theirs to publish too',
+    file: 'src/guard.js',
+    find: "  for (const e of mind.saidSince('0000-00-00T00:00', s)) out.push({ kind: 'said', text: e.text });",
+    into: '',
+  },
+  {
+    why: 'a word the repository already says is not what gives them away — a guard that cries at one line in a hundred and fifty gets switched off',
+    file: 'src/guard.js',
+    find: ' && (vocab.get(w) || 0) < PUBLIC_MIN;',
+    into: ';',
+  },
+  {
+    why: "a hook that is already in a repository is theirs — the guard's install leaves it alone",
+    file: 'src/guard.js',
+    find: '    if (fs.existsSync(f)) {',
+    into: '    if (false) {',
+  },
+  {
     why: 'a word THEY say every day is not a cue, however rare it is in the ghost\'s memory — learned from their own words, not from a list',
     file: 'src/undercurrent.js',
     find: '!commonWords.has(w) && !theirs.has(w) && ',

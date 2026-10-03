@@ -191,14 +191,14 @@ test('recall ranks: the rare word outweighs the common one, words together outwe
   mind.write(mind.FILES.journal, [
     '# Journal', '',
     ...Array.from({ length: 12 }, (_, i) => `## day ${i}\nThe computer at work again, the usual work on the computer, entry ${i}.`),
-    '## the raffle\nFor the first time in his life he won something: the raffle computer at work.',
+    '## the lottery\nSomebody at the office won the lottery computer at work.',
     '## scattered\nGeceler uzun. Bu işler iyi gidiyor.',
     '## together\nSon sözü buydu: iyi geceler vefa.',
     '## buried\nThe svc restarted twice.',
     '## named\nWe opened vc and the album was there.', '',
   ].join('\n\n'));
-  let hits = mind.recall('raffle computer work');
-  assert.match(hits[0].snippet, /won something: the raffle computer/, `the memory it is about comes first, not ninth: ${hits[0].snippet}`);
+  let hits = mind.recall('lottery computer work');
+  assert.match(hits[0].snippet, /won the lottery computer/, `the memory it is about comes first, not ninth: ${hits[0].snippet}`);
   assert.ok(hits[0].score > hits[1].score, 'and it is not tied with every paragraph that says "computer"');
   assert.ok(hits.filter((h) => h.file === mind.FILES.journal).length <= 3, 'one long diary does not fill the answer');
   hits = mind.recall('iyi geceler').filter((h) => h.file === mind.FILES.journal);

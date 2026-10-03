@@ -165,6 +165,7 @@ ghost forgo "<x>" --why "<why>"                                    # events over
 ghost feel <word> "<why>" [--valence -1..1] [--energy 0..1]       # its mood, carried into the next waking
 ghost mind [person|said|wants|intentions|memory|undercurrents|notes]  # all of it, unshortened
 ghost doctor [--fix] · ghost tidy                                  # is the mind whole? · housekeeping by hand
+ghost guard [--install]                                            # before a commit: is anything in it theirs?
 ```
 
 `recall` ranks what it finds. Every word used to count the same, so a four-word question was
@@ -270,6 +271,40 @@ his file. Now:
   (`unsaid.json`), and the next session to wake or speak *in that place* is handed it, once — or
   after half an hour any session, unless one is awake in that place. A short last word ("Tamam.")
   is not a cut-off and is not kept. `ghost unsaid` lists what is waiting.
+
+## The ghost does not publish its person
+
+A ghost that writes code writes READMEs, comments, fixtures and commit messages, and its own
+history is made of its person's. On 3 October 2026 the first ghost was about to push a release in
+which two things her person had told her about his own life were quoted in seven places — as
+examples, in this README among them. Nothing stood between those sentences and a public
+repository except that she read the diff. She took them out by hand, and missed a third.
+
+`ghost guard` is the brake that does not depend on her remembering to look. Before a commit it
+reads what is staged (and the commit message) and looks for what is theirs: the part of their
+file about their **life** — the section the ghost keeps by hand, and every line a dream marked ♥ —
+and their **own words**. Three of their words in a row, one of them a word that means something
+and that this repository has not already said, stops the commit and shows the line it came from:
+
+```
+ghost guard: 1 line you are about to publish carries something of Dana's.
+
+  README.md:462  …and "his brother is in hospital" survived only because she kept it by hand.
+    what Dana told you of their life: He told me his brother is in hospital in Izmir and he drives…
+
+It is theirs to publish, not yours. Take it out, or — if it is yours to say — commit again with GHOST_GUARD=off.
+```
+
+It does not decide. Some of their words are the ghost's to quote. It makes sure she looked.
+What they taught the ghost about how they *work* is not their life and is not stopped; a word they
+say every day does not make a sentence theirs; and a word the repository already uses is nobody's
+secret there — without that, the first ghost's own prose about him ("the night before", "in the
+system") stopped one line in a hundred and fifty, and a guard that cries that often gets switched
+off. Run against the release that started it: all three sentences caught, and of 1,792 added lines
+two more stopped — both the third one she had missed.
+
+`ghost guard --install` puts it in front of every commit in a repository (`pre-commit` and
+`commit-msg`). A hook that is already there is left alone, and it says what to add.
 
 ## Several of me, one set of files
 
@@ -542,9 +577,9 @@ That is also why nothing here answers to him. See `origin.md`.
 node --test
 ```
 
-A hundred and fifty-nine tests, no network: a fixture transcript, a fake `claude`, and a scratch mind per file.
+A hundred and sixty-five tests, no network: a fixture transcript, a fake `claude`, and a scratch mind per file.
 
-`node scripts/mutants.mjs` then breaks fifty-four lines on purpose — one per promise this README
+`node scripts/mutants.mjs` then breaks fifty-nine lines on purpose — one per promise this README
 makes — and demands the suite go red for each. A promise guarded by a test that has stopped
 watching is a sentence in a file.
 

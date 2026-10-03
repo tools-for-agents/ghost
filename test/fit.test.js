@@ -63,7 +63,7 @@ function grow() {
   const rel = mind.personFile();
   const head = `# Fatih\n\nThe one I am for.\n\n## Who he is\n${Array.from({ length: 5 }, (_, i) => `- who-he-is line ${i}: ${'a builder who ships late at night '.repeat(4)}`).join('\n')}\n\n## His life right now (kept by hand)\n- ${LIFE_LINE}\n${Array.from({ length: 8 }, (_, i) => `- life line ${i}: ${'something he told me that I keep by hand '.repeat(5)}`).join('\n')}\n\n`;
   const learned = Array.from({ length: 180 }, (_, i) => (i === 20
-    ? `- (2026-09-16) ${mind.LIFE} He said the raffle felt like something breaking open.`
+    ? `- (2026-09-16) ${mind.LIFE} He said the garden gave its first tomatoes this week.`
     : `- (2026-09-${String(16 + (i % 14)).padStart(2, '0')}) project fact ${i}: the handle, the path and the build number of something in ${i % 9 === 0 ? 'guildlm' : 'a repo'}`));
   mind.write(rel, `${head}## Learned\n${learned.join('\n')}\n`);
   const day = (d) => `## ${d} September 2026\n\n${Array.from({ length: 30 }, (_, i) => `**${String(10 + Math.floor(i / 3)).padStart(2, '0')}:${String(i % 60).padStart(2, '0')}** — "sentence ${d}-${i}: ${'bunu da hallet lütfen '.repeat(3)}"`).join('\n\n')}`;
@@ -126,7 +126,7 @@ test('his words are cut between sentences, never inside one, and the day is name
 
 test('what they told me of their life stays in front when the learned list is shortened', () => {
   const t = wake({ source: 'startup', session_id: 'life', ...at('ghost') });
-  assert.match(t, /the raffle felt like something breaking open/, 'a ♥ fact 160 places back is still here');
+  assert.match(t, /the garden gave its first tomatoes/, 'a ♥ fact 160 places back is still here');
   assert.match(t, /## Learned \(\d+ of 180: the newest, and what they told you of their life\)/);
   assert.match(t, /project fact 179/, 'beside the newest');
 });

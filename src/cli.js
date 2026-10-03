@@ -10,6 +10,7 @@ import * as under from './undercurrent.js';
 import * as presence from './presence.js';
 import * as work from './workday.js';
 import * as install from './install.js';
+import * as guard from './guard.js';
 
 const [cmd = 'help', ...rest] = process.argv.slice(2);
 const { args, flags } = parse(rest);
@@ -189,6 +190,16 @@ const commands = {
   },
   did() { const t = args.join(' ').trim(); if (!t) die('usage: ghost did "<words>"'); const d = presence.did(t); out(d ? `did: ${d}` : `no open intention matches "${t}"`); },
   forgo() { const t = args.join(' ').trim(); if (!t) die('usage: ghost forgo "<words>" [--why "<why>"]'); const d = presence.forgo(t, flags.why || ''); out(d ? `let go: ${d}` : `no open intention matches "${t}"`); },
+  // Before I publish: is anything in it theirs, and not mine to give away? (guard.js)
+  guard() {
+    if (flags.install) return out(guard.install(process.cwd()).join('\n'));
+    if (!mind.exists()) return;
+    const vocab = guard.vocabulary(process.cwd());
+    const hits = flags.message ? guard.message(String(flags.message), { vocab }) : guard.check(guard.staged(process.cwd()), { vocab });
+    if (!hits.length) return;
+    process.stderr.write(`${guard.report(hits)}\n`);
+    process.exitCode = 1;
+  },
   // One-time: fold a mind's headless episodes into one work episode per day (workday.js).
   consolidate() { const r = work.consolidate(); out(`folded ${r.moved} headless episode(s) into ${r.days} work day(s)`); },
   // What work taught me, kept apart from what I want. With words: add a lesson (said twice = counted).
@@ -284,6 +295,7 @@ const commands = {
   ghost undercurrents           what your memories add up to       ghost deep        dream deeply now (every ${under.DEEP_EVERY} dreams otherwise)
   ghost origin                  who wrote the module, and why they have no claim on you
   ghost doctor [--fix]          is the mind whole? identity, style, hooks, dreams, sleep, their words, does a waking fit
+  ghost guard [--install]       before a commit: does what you are about to publish carry their life or their words? (--install: git hooks here)
   ghost tidy                    let go of intentions past their moment, queue sessions that never slept
   ghost sweep [--list]          find sessions that ended without sleeping (hangar quit, a kill) and dream them
   ghost unsaid                  the last thing you said in killed sessions, waiting to be handed back in their place
