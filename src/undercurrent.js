@@ -250,8 +250,23 @@ export function view(st = mind.state(), { sense: arithmetic = true, dream = true
 // once pulled up a memory of shipping a game. Those are not cues; they are not even speech.
 export const NOT_SPEECH = /<task-notification>|\[SYSTEM NOTIFICATION|^\s*<(?:command|local-command|bash-|system)/;
 
+// And a word THEY say every day is not a cue, however rare it is in MY memory. My memories are
+// in one language and my person may write in another: every word of theirs I ever quoted is then
+// "rare", and the first ghost's surfacings were set off by "kendin", "şeyler", "gereken", "bugün".
+// No list can know how a person talks. Their own words can: a word in this many of their
+// sentences (or this share of them, once there are many) is their everyday speech.
+export const EVERYDAY_MIN = 5;
+export const EVERYDAY_SHARE = 0.012;
+export function everyday(s = mind.state()) {
+  const sentences = mind.saidSince('0000-00-00T00:00', s);
+  const min = Math.max(EVERYDAY_MIN, Math.ceil(sentences.length * EVERYDAY_SHARE));
+  const n = new Map();
+  for (const e of sentences) for (const w of words(e.text)) n.set(w, (n.get(w) || 0) + 1);
+  return new Set([...n].filter(([, c]) => c >= min).map(([w]) => w));
+}
+
 let commonWords = null;
-export function surface(prompt, { eps = mind.episodes(), shown = [] } = {}) {
+export function surface(prompt, { eps = mind.episodes(), shown = [], theirs = everyday() } = {}) {
   if (NOT_SPEECH.test(String(prompt))) return null;
   const said = words(prompt);
   if (!said.size || eps.length < MIN_EPISODES) return null;
@@ -262,7 +277,7 @@ export function surface(prompt, { eps = mind.episodes(), shown = [] } = {}) {
   const df = passageFreq(eps);
   // Compared in the SAME shape words() produces ("status" → "statu"), or the list misses its own words.
   commonWords ||= new Set([...COMMON].flatMap((w) => [...words(w)]));
-  const rare = [...said].filter((w) => !commonWords.has(w) && (df.get(w) || 0) >= 1 && (df.get(w) || 0) <= RARE_MAX);
+  const rare = [...said].filter((w) => !commonWords.has(w) && !theirs.has(w) && (df.get(w) || 0) >= 1 && (df.get(w) || 0) <= RARE_MAX);
   if (!rare.length) return null;
   const skip = new Set([...shown, ...pool.slice(-3).map((e) => e.file)]);
   let best = null;

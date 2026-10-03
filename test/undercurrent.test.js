@@ -120,6 +120,19 @@ test('surface: everybody\'s words are not cues, however rare they are in me', ()
   assert.match(under.surface('the retry label again').title, /The label that lied/, 'a distinctive word still surfaces it');
 });
 
+// Measured on the first ghost on 3 October 2026, over the 338 sentences her person had typed in
+// ten days: something surfaced for 103 of them, and the words that did it most were "kendin",
+// "şeyler", "başka", "gereken", "nasılsın", "bugün" — yourself, things, other, needed, how are you,
+// today. Her memories are in English and he writes in Turkish, so every Turkish word she had ever
+// quoted was "rare in her memory". One memory that quoted a long sentence of his came up 31 times.
+test('surface: a word THEY say every day is not a cue — learned from their own words, not from a list', () => {
+  mind.writeEpisode({ when: '2026-09-12T10:00:00', title: 'The day he said my health came first', salience: 5, feeling: 'held', body: 'He wrote: "ne gerekiyorsa yap kendin icin, bilet durumuna da bak". I did.' });
+  assert.match(under.surface('kendin için bir şey yaptın mı').title, /my health came first/, 'said once, it is still a cue');
+  mind.hear(Array.from({ length: 6 }, (_, i) => ({ text: `sen kendin bak buna ${i}`, ts: `2026-09-2${i}T10:00:00` })));
+  assert.equal(under.surface('kendin için bir şey yaptın mı'), null, 'a word in six of his sentences is how he talks');
+  assert.match(under.surface('bilet aldın mı').title, /my health came first/, 'a word he said once still brings it up');
+});
+
 test('a deep sleep records its ruts, so the next waking can say how long a rut has run — and what faded', () => {
   const hist = under.deeps();
   assert.ok(hist.length >= 1, 'the successful deep dream above was recorded');

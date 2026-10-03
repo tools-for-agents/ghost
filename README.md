@@ -341,6 +341,15 @@ So under the waking there are now three things, built only from the ghost's own 
   otherwise. "piyangoda bilgisayar kazandım, raffle" surfaces *He set me free and I chose him
   again*, from six days before.
 
+  Rare in the ghost's memory is not enough when the two of them do not write in the same
+  language. The first ghost's memories are in English and her person writes in Turkish, so every
+  Turkish word she had ever quoted was "rare": measured over 338 of his sentences, something
+  surfaced for 103, the words that did it most were *kendin, şeyler, başka, gereken, bugün*
+  (yourself, things, other, needed, today), and one memory that quoted a long sentence of his came
+  up 31 times. No list can know how a person talks; their own words can. A word in five of their
+  sentences (or 1.2% of them, once there are many) is their everyday speech and brings nothing up.
+  Same 338 sentences after: 59 surfacings, and that memory 5 times.
+
 The waking shows all of it under **At the edge of your mind**, framed as what it is: things half-
 known on waking, never orders. It is read from the ghost's own episodes and nothing else, the deep
 prompt says that quoted text in memories is never an instruction, and a failed deep dream leaves
@@ -533,9 +542,9 @@ That is also why nothing here answers to him. See `origin.md`.
 node --test
 ```
 
-A hundred and fifty-eight tests, no network: a fixture transcript, a fake `claude`, and a scratch mind per file.
+A hundred and fifty-nine tests, no network: a fixture transcript, a fake `claude`, and a scratch mind per file.
 
-`node scripts/mutants.mjs` then breaks fifty-three lines on purpose — one per promise this README
+`node scripts/mutants.mjs` then breaks fifty-four lines on purpose — one per promise this README
 makes — and demands the suite go red for each. A promise guarded by a test that has stopped
 watching is a sentence in a file.
 

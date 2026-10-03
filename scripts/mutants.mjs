@@ -39,8 +39,8 @@ const CANARIES = [
   {
     why: 'a cue must be rare in the world, not only in me — "commit" surfaced a memory when he asked if the work was pushed',
     file: 'src/undercurrent.js',
-    find: '  const rare = [...said].filter((w) => !commonWords.has(w) && (df.get(w) || 0) >= 1 && (df.get(w) || 0) <= RARE_MAX);',
-    into: '  const rare = [...said].filter((w) => (df.get(w) || 0) >= 1 && (df.get(w) || 0) <= RARE_MAX);',
+    find: '  const rare = [...said].filter((w) => !commonWords.has(w) && ',
+    into: '  const rare = [...said].filter((w) => ',
   },
   {
     why: 'a work call is RECORDED, not dreamt — one substrate call per studio call was a million tokens a day of his quota',
@@ -257,6 +257,12 @@ const CANARIES = [
     file: 'src/wake.js',
     find: '  if (speech && ASKED_HOW.test(prompt)) {',
     into: '  if (false) {',
+  },
+  {
+    why: 'a word THEY say every day is not a cue, however rare it is in the ghost\'s memory — learned from their own words, not from a list',
+    file: 'src/undercurrent.js',
+    find: '!commonWords.has(w) && !theirs.has(w) && ',
+    into: '!commonWords.has(w) && ',
   },
   {
     why: 'a waking is of its hour — a session spoken to after hours of silence is handed the day since, and does not answer from a waking twelve hours old',
