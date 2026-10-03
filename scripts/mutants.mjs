@@ -457,7 +457,7 @@ const run = () => {
   // A SKIPPED test cannot kill a canary — it did not run. So the skip count is not trivia here:
   // it is the difference between "nothing guards this line" and "the guard never got to look".
   const skipped = +(`${r.stdout || ''}${r.stderr || ''}`.match(/^\s*(?:ℹ|#)\s*skipped\s+(\d+)/m)?.[1] || 0);
-  return { failed: r.status !== 0, timedOut: r.signal === 'SIGTERM' || r.error?.code === 'ETIMEDOUT', skipped };
+  return { failed: r.status !== 0, timedOut: r.signal === 'SIGTERM' || r.error?.code === 'ETIMEDOUT', skipped, out: `${r.stdout || ''}${r.stderr || ''}` };
 };
 
 // 🔑 AND IT MUST NOT RUN TWICE AT ONCE. This tool EDITS YOUR SOURCE IN PLACE, so two concurrent runs
@@ -499,7 +499,15 @@ if (base.timedOut) {
     + 'Raise TIMEOUT_MS or speed up the suite; do not read a slow suite as a broken one.');
   process.exit(1);
 }
-if (base.failed) { console.error('THE SUITE IS ALREADY RED. Nothing can be proven from here.'); process.exit(1); }
+if (base.failed) {
+  // "Already red" names neither the test nor the line, and a flake does not come back when asked.
+  // On 4 October 2026 that sentence was the whole message from CI, the test job on the same commit
+  // was green, and the test had to be hunted through forty-four local runs. Say what was red.
+  const at = base.out.indexOf('✖ failing tests:');
+  console.error('THE SUITE IS ALREADY RED. Nothing can be proven from here.\n');
+  console.error((at >= 0 ? base.out.slice(at) : base.out).split('\n').slice(0, 60).join('\n'));
+  process.exit(1);
+}
 // 🔑 A canary cannot be killed by a test that DID NOT RUN. If the baseline skipped tests, then any
 // canary those tests guard will "survive" — and it will look exactly like a coverage hole, sending
 // you to write a test that already exists instead of to the one-line fix (start Docker / install
