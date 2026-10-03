@@ -325,6 +325,12 @@ const CANARIES = [
     into: '      if (false) { out.push(',
   },
   {
+    why: 'a guard that cannot look does not stop the work — it stops a commit only for what it found',
+    file: 'src/guard.js',
+    find: "    return { stop: false, text: `ghost guard could not look",
+    into: "    return { stop: true, text: `ghost guard could not look",
+  },
+  {
     why: 'a line a dream marked ♥ is theirs, not only the section kept by hand',
     file: 'src/guard.js',
     find: 'if (t && (life || line.includes(mind.LIFE))) out.push',

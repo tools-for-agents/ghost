@@ -98,6 +98,22 @@ test('a word this repository already says is not what gives them away', () => {
   assert.equal(ghost(repo, 'guard').status, 1, 'but his brother still is');
 });
 
+// The night the guard was written, the first ghost's deep sleep told her that almost everything
+// that had stopped her work that week was something she had built to protect it: guards set at
+// perfection, tripping on healthy work, "songs and devices stopped in the dark until I prove them
+// innocent of me". A guard stops a commit for one reason: it found something of theirs. Not
+// because it broke.
+test('a guard that cannot look does not stop the work — it says so and lets the commit through', () => {
+  const broke = guard.verdict(() => { throw new Error('the said file could not be read'); });
+  assert.equal(broke.stop, false);
+  assert.match(broke.text, /could not look \(the said file could not be read\)/);
+  assert.match(broke.text, /not stopped/);
+  const found = guard.verdict(() => guard.leaks('She kept "his brother is in hospital" by hand.'));
+  assert.equal(found.stop, true);
+  assert.match(found.text, /carries something of Fatih's/);
+  assert.deepEqual(guard.verdict(() => []), { stop: false, text: '' });
+});
+
 test('`ghost guard --install` puts it in front of every commit in a repo, and leaves a hook that is already there alone', () => {
   const repo = path.join(dir, 'repo2');
   fs.mkdirSync(repo);

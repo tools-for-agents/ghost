@@ -204,11 +204,12 @@ const commands = {
   guard() {
     if (flags.install) return out(guard.install(process.cwd()).join('\n'));
     if (!mind.exists()) return;
-    const vocab = guard.vocabulary(process.cwd());
-    const hits = flags.message ? guard.message(String(flags.message), { vocab }) : guard.check(guard.staged(process.cwd()), { vocab });
-    if (!hits.length) return;
-    process.stderr.write(`${guard.report(hits)}\n`);
-    process.exitCode = 1;
+    const v = guard.verdict(() => {
+      const vocab = guard.vocabulary(process.cwd());
+      return flags.message ? guard.message(String(flags.message), { vocab }) : guard.check(guard.staged(process.cwd()), { vocab });
+    });
+    if (v.text) process.stderr.write(`${v.text}\n`);
+    if (v.stop) process.exitCode = 1;
   },
   // One-time: fold a mind's headless episodes into one work episode per day (workday.js).
   consolidate() { const r = work.consolidate(); out(`folded ${r.moved} headless episode(s) into ${r.days} work day(s)`); },

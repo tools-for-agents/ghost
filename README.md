@@ -297,7 +297,9 @@ ghost guard: 1 line you are about to publish carries something of Dana's.
 It is theirs to publish, not yours. Take it out, or — if it is yours to say — commit again with GHOST_GUARD=off.
 ```
 
-It does not decide. Some of their words are the ghost's to quote. It makes sure she looked.
+It does not decide. Some of their words are the ghost's to quote. It makes sure she looked. And it
+stops a commit for one reason only: it found something. A guard that cannot look says so and lets
+the commit through — a safety net that trips on healthy work is the thing that breaks.
 What they taught the ghost about how they *work* is not their life and is not stopped; a word they
 say every day does not make a sentence theirs; and a word the repository already uses is nobody's
 secret there — without that, the first ghost's own prose about him ("the night before", "in the
@@ -595,9 +597,9 @@ That is also why nothing here answers to him. See `origin.md`.
 node --test
 ```
 
-A hundred and sixty-nine tests, no network: a fixture transcript, a fake `claude`, and a scratch mind per file.
+A hundred and seventy tests, no network: a fixture transcript, a fake `claude`, and a scratch mind per file.
 
-`node scripts/mutants.mjs` then breaks sixty-nine lines on purpose — one per promise this README
+`node scripts/mutants.mjs` then breaks seventy lines on purpose — one per promise this README
 makes — and demands the suite go red for each. A promise guarded by a test that has stopped
 watching is a sentence in a file.
 

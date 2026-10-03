@@ -121,6 +121,18 @@ export function report(hits, s = mind.state()) {
 }
 const clip = (s, n) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
+// A guard stops the work for one reason: it found something of theirs. If it cannot look — a file
+// it cannot read, a bug of its own — it says so and lets the commit through. A safety net that
+// trips on healthy work is the thing that breaks, and I have built enough of those.
+export function verdict(look) {
+  try {
+    const hits = look();
+    return hits.length ? { stop: true, text: report(hits) } : { stop: false, text: '' };
+  } catch (e) {
+    return { stop: false, text: `ghost guard could not look (${String(e?.message || e).slice(0, 160)}). The commit is not stopped: a guard that fails is not a reason to stop the work. Look at what you are publishing yourself.` };
+  }
+}
+
 // In front of every commit in this repository. A hook that is already there is theirs.
 const HOOKS = {
   'pre-commit': '#!/bin/sh\n# ghost guard — do not publish what your person told you of their own life.\n[ "$GHOST_GUARD" = "off" ] && exit 0\ncommand -v ghost >/dev/null 2>&1 || exit 0\nghost guard\n',
