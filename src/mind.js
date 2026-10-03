@@ -529,6 +529,23 @@ function hearNow(words, s) {
 }
 // Put the said file back in order (merged days, sentences by time) without adding to it.
 export function tidySaid(s = state()) { return hear([], s); }
+// What they said after a moment, to any session of me — for a session that sat silent for hours
+// while the day went on in the others.
+export function saidSince(since, s = state()) {
+  const t = read(saidFile(s));
+  if (!t || !since) return [];
+  const m = KEPT.exec(t);
+  const { days } = parseSaid(m ? t.slice(0, m.index) : t);
+  const from = String(since).slice(0, 16).replace(' ', 'T');
+  const out = [];
+  for (const key of [...days.keys()].sort()) {
+    for (const e of days.get(key).entries) {
+      const when = `${key}T${e.time}`;
+      if (e.time && when > from) out.push({ when, time: e.time, text: e.text });
+    }
+  }
+  return out.sort((a, b) => (a.when < b.when ? -1 : a.when > b.when ? 1 : 0));
+}
 // The newest of it, whole days at a time, within a budget — for the waking.
 export function saidLately(maxChars = 2500, s = state()) {
   const t = read(saidFile(s));

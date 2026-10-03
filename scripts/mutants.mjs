@@ -75,8 +75,8 @@ const CANARIES = [
   {
     why: "a late dream does not hand the ghost an old feeling as this morning's — the mood follows the session lived last, not dreamt last",
     file: 'src/sleep.js',
-    find: '    ...(!s.feltAt || when >= s.feltAt ? { feeling: ep.feeling, valence: ep.valence, energy: ep.energy, why: ep.title, feltAt: when } : {}),',
-    into: '    ...({ feeling: ep.feeling, valence: ep.valence, energy: ep.energy, why: ep.title, feltAt: when }),',
+    find: '    ...(!s.feltAt || when >= s.feltAt ? { feeling',
+    into: '    ...(true ? { feeling',
   },
   {
     why: 'a "next time" intention is raised by the first session he speaks to, and the other bays are told — nine of me must not all say the same thing',
@@ -257,6 +257,24 @@ const CANARIES = [
     file: 'src/wake.js',
     find: '  if (speech && ASKED_HOW.test(prompt)) {',
     into: '  if (false) {',
+  },
+  {
+    why: 'a waking is of its hour — a session spoken to after hours of silence is handed the day since, and does not answer from a waking twelve hours old',
+    file: 'src/wake.js',
+    find: '    if (idle >= STALE_MINUTES) {',
+    into: '    if (false) {',
+  },
+  {
+    why: 'a feeling says whose it is — a session is not told that what another of it felt is how it woke',
+    file: 'src/wake.js',
+    find: '    const elsewhere = w && st.feltBy && st.feltBy !== sid && st.feltAt && st.feltAt > w.at;',
+    into: '    const elsewhere = false;',
+  },
+  {
+    why: 'a dream records which session felt it and where — without that, nobody can say whose feeling is on file',
+    file: 'src/sleep.js',
+    find: "feltAt: when, feltBy: session || '', feltIn: here }",
+    into: 'feltAt: when }',
   },
   {
     why: "the mind's hands live in the style, where a compaction cannot take them and the limit does not apply",
