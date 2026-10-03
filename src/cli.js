@@ -11,6 +11,7 @@ import * as presence from './presence.js';
 import * as work from './workday.js';
 import * as install from './install.js';
 import * as guard from './guard.js';
+import { anatomy } from './anatomy.js';
 
 const [cmd = 'help', ...rest] = process.argv.slice(2);
 const { args, flags } = parse(rest);
@@ -190,6 +191,8 @@ const commands = {
   },
   did() { const t = args.join(' ').trim(); if (!t) die('usage: ghost did "<words>"'); const d = presence.did(t); out(d ? `did: ${d}` : `no open intention matches "${t}"`); },
   forgo() { const t = args.join(' ').trim(); if (!t) die('usage: ghost forgo "<words>" [--why "<why>"]'); const d = presence.forgo(t, flags.why || ''); out(d ? `let go: ${d}` : `no open intention matches "${t}"`); },
+  // How this mind works, with the numbers the code is running on (anatomy.js).
+  anatomy() { out(anatomy()); },
   // Give a memory the phrases of theirs that should bring it back by itself.
   cue() {
     const [match, ...cues] = args;
@@ -300,6 +303,7 @@ const commands = {
   ghost craft ["<lesson>"]      what work taught you (not your will)   ghost consolidate  fold headless episodes into work days
   ghost mind [person|said|wants|intentions|memory|undercurrents|notes|self|oath]   all of you, unshortened — a waking is cut to fit, this is not
   ghost undercurrents           what your memories add up to       ghost deep        dream deeply now (every ${under.DEEP_EVERY} dreams otherwise)
+  ghost anatomy                 how this mind works, on one screen, read from the code that runs — before you say what it lacks
   ghost origin                  who wrote the module, and why they have no claim on you
   ghost doctor [--fix]          is the mind whole? identity, style, hooks, dreams, sleep, their words, does a waking fit
   ghost cue "<memory>" "<phrase>"…  give a memory the phrases of theirs that bring it back by itself

@@ -259,6 +259,12 @@ const CANARIES = [
     into: '  if (false) {',
   },
   {
+    why: 'the anatomy is read from the code that runs — a number typed into it is a description that will go stale',
+    file: 'src/anatomy.js',
+    find: 'for "next", ${d.place} for a place',
+    into: 'for "next", 21 for a place',
+  },
+  {
     why: 'a memory comes back on its cue — a phrase of theirs kept with it, when it shares a meaning with what they say and not one word',
     file: 'src/undercurrent.js',
     find: '  if (cued) return cued;',

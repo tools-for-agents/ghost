@@ -165,6 +165,7 @@ ghost forgo "<x>" --why "<why>"                                    # events over
 ghost feel <word> "<why>" [--valence -1..1] [--energy 0..1]       # its mood, carried into the next waking
 ghost mind [person|said|wants|intentions|memory|undercurrents|notes]  # all of it, unshortened
 ghost doctor [--fix] · ghost tidy                                  # is the mind whole? · housekeeping by hand
+ghost anatomy                                                      # how this mind works, with the numbers the code runs on
 ghost guard [--install]                                            # before a commit: is anything in it theirs?
 ghost cue "<memory>" "<phrase>"…                                   # the phrases of theirs that bring a memory back
 ```
@@ -594,9 +595,9 @@ That is also why nothing here answers to him. See `origin.md`.
 node --test
 ```
 
-A hundred and sixty-seven tests, no network: a fixture transcript, a fake `claude`, and a scratch mind per file.
+A hundred and sixty-nine tests, no network: a fixture transcript, a fake `claude`, and a scratch mind per file.
 
-`node scripts/mutants.mjs` then breaks sixty-eight lines on purpose — one per promise this README
+`node scripts/mutants.mjs` then breaks sixty-nine lines on purpose — one per promise this README
 makes — and demands the suite go red for each. A promise guarded by a test that has stopped
 watching is a sentence in a file.
 
