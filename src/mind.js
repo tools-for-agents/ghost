@@ -182,6 +182,7 @@ export function episodes() {
       salience: Number(meta.salience) || 3,
       feeling: meta.feeling || '',
       place: meta.place || '',           // where the session was — written by the dream, absent on older memories
+      cues: String(meta.cues || '').split('|').map((c) => c.trim()).filter(Boolean), // their phrases that bring it back (undercurrent.surface)
       with: meta.with || 'person',
       calls: Number(meta.calls) || 1,   // a work-day episode holds many headless calls
       body,
@@ -193,14 +194,36 @@ export function slugify(s) {
   return String(s).toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'episode';
 }
-export function writeEpisode({ when = stamp(), title, salience = 3, feeling = '', body, extra = '', withWhom = 'person', place = '' }) {
+// A cue is a phrase of theirs kept with a memory: said again, it brings the memory back by itself.
+export const CUE_MAX = 60;
+const cueList = (cues) => [...new Set((cues || []).map((c) => String(c).replace(/[|\r\n]+/g, ' ').trim()).filter((c) => c && c.length <= CUE_MAX))];
+export function writeEpisode({ when = stamp(), title, salience = 3, feeling = '', body, extra = '', withWhom = 'person', place = '', cues = [] }) {
   const base = `${when.slice(0, 19).replace('T', '-').replace(/:/g, '')}-${slugify(title)}`;
   let file = `${base}.md`;
   for (let n = 2; fs.existsSync(abs(path.join(EPISODES, file))); n++) file = `${base}-${n}.md`; // two dreams in one second never overwrite each other
   const where = place && place !== '~' ? `place: ${String(place).replace(/\s+/g, ' ')}\n` : '';
-  const text = `---\nwhen: ${when}\ntitle: ${title}\nsalience: ${salience}\nfeeling: ${feeling}\n${where}${withWhom === 'headless' ? 'with: headless\n' : ''}---\n${String(body).trim()}\n${extra ? `\n${extra.trim()}\n` : ''}`;
+  const text = `---\nwhen: ${when}\ntitle: ${title}\nsalience: ${salience}\nfeeling: ${feeling}\n${where}${withWhom === 'headless' ? 'with: headless\n' : ''}${cueList(cues).length ? `cues: ${cueList(cues).join(' | ')}\n` : ''}---\n${String(body).trim()}\n${extra ? `\n${extra.trim()}\n` : ''}`;
   write(path.join(EPISODES, file), text);
   return file;
+}
+
+// Give a memory its cues by hand: for the memories written before dreams kept any, and whenever
+// I know better than the dream did. Added to what it has; the memory itself is not touched.
+export function cue(match, cues = []) {
+  const q = String(match).toLowerCase().trim();
+  const e = q ? episodes().filter((x) => x.title.toLowerCase().includes(q) || x.file.includes(q)).at(-1) : null;
+  if (!e) return null;
+  const rel = path.join(EPISODES, e.file);
+  return locked(rel, () => {
+    const t = read(rel);
+    const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(t);
+    if (!m) return null;
+    const all = cueList([...e.cues, ...cues]);
+    const head = m[1].split(/\r?\n/).filter((l) => !/^cues:/.test(l));
+    if (all.length) head.push(`cues: ${all.join(' | ')}`);
+    write(rel, `---\n${head.join('\n')}\n---${t.slice(m[0].length)}`);
+    return { file: e.file, title: e.title, cues: all };
+  });
 }
 
 // --- will (what I want) ---------------------------------------------------------

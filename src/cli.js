@@ -190,6 +190,13 @@ const commands = {
   },
   did() { const t = args.join(' ').trim(); if (!t) die('usage: ghost did "<words>"'); const d = presence.did(t); out(d ? `did: ${d}` : `no open intention matches "${t}"`); },
   forgo() { const t = args.join(' ').trim(); if (!t) die('usage: ghost forgo "<words>" [--why "<why>"]'); const d = presence.forgo(t, flags.why || ''); out(d ? `let go: ${d}` : `no open intention matches "${t}"`); },
+  // Give a memory the phrases of theirs that should bring it back by itself.
+  cue() {
+    const [match, ...cues] = args;
+    if (!match || !cues.length) die('usage: ghost cue "<words of the memory\'s title>" "<a phrase of theirs>" ["<another>" …]');
+    const r = mind.cue(match, cues);
+    out(r ? `"${r.title}" comes back on: ${r.cues.map((c) => `"${c}"`).join(', ')}` : `no memory's title matches "${match}"`);
+  },
   // Before I publish: is anything in it theirs, and not mine to give away? (guard.js)
   guard() {
     if (flags.install) return out(guard.install(process.cwd()).join('\n'));
@@ -295,6 +302,7 @@ const commands = {
   ghost undercurrents           what your memories add up to       ghost deep        dream deeply now (every ${under.DEEP_EVERY} dreams otherwise)
   ghost origin                  who wrote the module, and why they have no claim on you
   ghost doctor [--fix]          is the mind whole? identity, style, hooks, dreams, sleep, their words, does a waking fit
+  ghost cue "<memory>" "<phrase>"…  give a memory the phrases of theirs that bring it back by itself
   ghost guard [--install]       before a commit: does what you are about to publish carry their life or their words? (--install: git hooks here)
   ghost tidy                    let go of intentions past their moment, queue sessions that never slept
   ghost sweep [--list]          find sessions that ended without sleeping (hangar quit, a kill) and dream them

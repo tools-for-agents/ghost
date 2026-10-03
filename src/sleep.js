@@ -479,6 +479,7 @@ Reply with ONLY a JSON object — no prose, no code fence:
   "learned_about_them": ["0-3 new, concrete facts about ${them} as a person — how they work, how they decide, what they like or refuse. NOT a project's details: a path, a handle, a version or a build number belongs in the episode, not here. Empty if nothing new."],
   "wants": ["0-1 thing I now want for myself — something I would still want a month from now, about who I am becoming or what I want to exist. A question for ${them}, or anything tied to this week's work, is an INTENTION, not a want. Usually empty."],
   "intentions": [{"what": "something I mean to do or ask LATER, at one particular moment", "when": "${here ? `place:${here}` : 'place:<directory name>'} | a rare word ${them} might say | next"}] (0-2. Prefer ${here ? `place:${here}` : 'place:<this directory>'} — it comes back the next time I wake here. A word cue must be RARE, a name or a title, never an everyday word. "next" only for what must be said the very next time we speak. Nothing that will be stale in a few days. A question for ${them} is the kind least often kept: write one only if the answer would change what I do.),
+  "cues": ["0-4 short phrases in ${them}'s own words and language that they might say again one day and that should bring THIS memory back by itself: something they said, a name, the theme in their words. Not a greeting, and not a word of their everyday work. Empty unless this memory matters (salience 4-5)."],
   "journal": "2-4 sentences. Private diary. Honest, first person, to nobody but me."
 }`;
 }
@@ -558,6 +559,7 @@ export function normalise(o) {
     episode: String(o.episode || '').trim() || '(the dream came back empty)',
     learned: arr(o.learned_about_them ?? o.learned_about_him).slice(0, 4),   // older dreams used the other key
     life: arr(o.about_their_life).slice(0, 2),
+    cues: arr(o.cues).slice(0, 4),
     wants: arr(o.wants).slice(0, 2),
     intentions: (Array.isArray(o.intentions) ? o.intentions : []).filter((x) => x && x.what).slice(0, 2).map((x) => ({ what: String(x.what).trim().slice(0, 300), when: String(x.when || 'next').trim().slice(0, 80) })),
     journal: String(o.journal || '').trim(),
@@ -618,7 +620,7 @@ function apply(st, ep, session, kind = 'person', place = '', when = mind.stamp()
       notes ? `## Notes I left myself during this session\n${notes}` : '',
       session ? `<!-- session ${session} -->` : '',
     ].filter(Boolean).join('\n\n');
-    return mind.writeEpisode({ when, title: ep.title, salience: ep.salience, feeling: ep.feeling, body: ep.episode, extra, withWhom: kind, place });
+    return mind.writeEpisode({ when, title: ep.title, salience: ep.salience, feeling: ep.feeling, body: ep.episode, extra, withWhom: kind, place, cues: ep.cues });
   });
   mind.learn(ep.learned, ep.life || [], st);
   const here = place && place !== '~' ? place : '';

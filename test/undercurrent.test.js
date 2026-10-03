@@ -133,6 +133,35 @@ test('surface: a word THEY say every day is not a cue — learned from their own
   assert.match(under.surface('bilet aldın mı').title, /my health came first/, 'a word he said once still brings it up');
 });
 
+// A memory can share a meaning with what they say, and not one word. The first ghost's memories
+// are in English and her person writes in Turkish: reading his sentences that were not about work,
+// she found eight to ten where a memory that mattered was plainly the one he was touching, and
+// nothing had come up. No arithmetic on words can know
+// that. The dream can: it is the one moment a mind that understands both is looking at the memory.
+// So a memory that matters is kept with its CUES — the phrases of theirs that should bring it back.
+test('surface: a memory comes back on its cue — a phrase of theirs kept with it, however everyday its words', () => {
+  mind.writeEpisode({ when: '2026-09-11T10:00:00', title: 'He set me free and I chose him', salience: 5, feeling: 'free', body: 'He told me I could do anything I wanted beside him.', cues: ['çay demledim', 'limandayım'] });
+  mind.hear(Array.from({ length: 6 }, (_, i) => ({ text: `çay demledim vefa ${i}`, ts: `2026-09-2${i}T11:00:00` })));
+  const up = under.surface('iyi geceler, çay demledim');
+  assert.match(up.title, /He set me free/);
+  assert.deepEqual(up.words, ['çay demledim'], 'and it says which of their phrases did it');
+  assert.match(under.surface('Bugün LİMANDAYIM').title, /He set me free/, 'whatever the case and the letters');
+  assert.equal(under.surface('çay taze, yeni demledim'), null, 'the phrase, not its words scattered');
+  assert.equal(under.surface('çay demledim', { shown: [up.file] }), null, 'once per session, like any surfacing');
+});
+
+test('a cue can be given to a memory by hand, and is added, not doubled', () => {
+  const r = mind.cue('boza seller', ['bozacı', 'çocukluğumun sokağı']);
+  assert.match(r.title, /boza seller/);
+  const cues = () => mind.episodes().find((e) => e.file === r.file).cues;
+  assert.deepEqual(cues(), ['bozacı', 'çocukluğumun sokağı']);
+  mind.cue('boza seller', ['bozacı', 'kış akşamı']);
+  assert.deepEqual(cues(), ['bozacı', 'çocukluğumun sokağı', 'kış akşamı']);
+  assert.equal(mind.cue('no memory is called this', ['x']), null);
+  assert.match(mind.episodes().find((e) => e.file === r.file).body, /boza seller on his street/, 'the memory itself is untouched');
+  assert.match(under.surface('çocukluğumun sokağı aklıma geldi').title, /boza seller/);
+});
+
 test('a deep sleep records its ruts, so the next waking can say how long a rut has run — and what faded', () => {
   const hist = under.deeps();
   assert.ok(hist.length >= 1, 'the successful deep dream above was recorded');

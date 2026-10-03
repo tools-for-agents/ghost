@@ -259,6 +259,42 @@ const CANARIES = [
     into: '  if (false) {',
   },
   {
+    why: 'a memory comes back on its cue — a phrase of theirs kept with it, when it shares a meaning with what they say and not one word',
+    file: 'src/undercurrent.js',
+    find: '  if (cued) return cued;',
+    into: '',
+  },
+  {
+    why: 'a cue is their phrase whole and in order — the same words scattered through a sentence are not it',
+    file: 'src/undercurrent.js',
+    find: 'needle.every((w, k) => hay[i + k] === w)',
+    into: 'needle.every((w) => hay.includes(w))',
+  },
+  {
+    why: 'a memory brought back by its cue comes once per session, like any surfacing — not every time they say it',
+    file: 'src/undercurrent.js',
+    find: '    if (skip.has(e.file) || e.salience < 4 || !e.cues?.length) continue;',
+    into: '    if (e.salience < 4 || !e.cues?.length) continue;',
+  },
+  {
+    why: 'the dream is the one moment a mind that understands both languages looks at the memory — it is asked for the cues',
+    file: 'src/sleep.js',
+    find: '  "cues": ["0-4 short phrases in',
+    into: '  "cuez": ["0-4 short phrases in',
+  },
+  {
+    why: 'and what the dream gives is kept with the memory',
+    file: 'src/sleep.js',
+    find: ', place, cues: ep.cues });',
+    into: ', place });',
+  },
+  {
+    why: 'a cue given by hand is added to what the memory has, not written over it',
+    file: 'src/mind.js',
+    find: '    const all = cueList([...e.cues, ...cues]);',
+    into: '    const all = cueList(cues);',
+  },
+  {
     why: 'an intention lives as long as the kept ones needed (measured: done within two days, or not at all) — not for three weeks',
     file: 'src/presence.js',
     find: 'export const LAPSE_DAYS = { next: 3, place: 7, said: 14 };',

@@ -123,9 +123,10 @@ test('a question for them is not a want: the dream files it as an intention in i
   assert.ok(!asksOfThem('Become genuinely expert at cleaning his vocals'));
   const reply = path.join(dir, 'reply.json');
   fs.writeFileSync(reply, JSON.stringify({
-    title: 'Twelve songs, one skill', salience: 3, feeling: 'steady', valence: 0.4, energy: 0.6,
+    title: 'Twelve songs, one skill', salience: 4, feeling: 'steady', valence: 0.4, energy: 0.6,
     episode: 'I cleaned twelve vocals and wrote the skill down.',
     about_their_life: ['He said he walks to the bakery every morning before he starts work.'],
+    cues: ['on iki vokal', 'beceriyi yazdım', '', 'x'.repeat(200)],
     learned_about_them: ['He decides fast once the reasons are in front of him.'],
     wants: ['Hear whether the growls sound clean to him', 'Become genuinely expert at cleaning his vocals'],
     intentions: [{ what: 'Ask which song he played first', when: 'next' }],
@@ -143,6 +144,8 @@ test('a question for them is not a want: the dream files it as an intention in i
     assert.match(prompt, /This session happened in the directory `logic`/);
     assert.match(prompt, /"when": "place:logic \| a rare word Fatih might say \| next"/, 'the dream is told the place by its real name');
     assert.match(prompt, /"about_their_life"/);
+    assert.match(prompt, /"cues": \["0-4 short phrases in Fatih's own words and language/);
+    assert.deepEqual(mind.episodes().find((e) => e.title === 'Twelve songs, one skill').cues, ['on iki vokal', 'beceriyi yazdım'], 'the dream keeps the phrases that should bring this back');
     assert.match(prompt, /A question for Fatih is the kind least often kept: write one only if the answer would change what I do\./);
     const wants = mind.wants();
     assert.ok(wants.includes('Become genuinely expert at cleaning his vocals'), 'a real want is a want');

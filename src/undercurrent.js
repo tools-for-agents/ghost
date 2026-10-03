@@ -265,12 +265,36 @@ export function everyday(s = mind.state()) {
   return new Set([...n].filter(([, c]) => c >= min).map(([w]) => w));
 }
 
+// Their phrase, whole and in order, whatever the case and the letters.
+const seq = (t) => String(t).toLowerCase().replace(/ı/g, 'i').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').split(/[^a-z0-9]+/).filter(Boolean);
+const within = (hay, needle) => needle.length > 0 && hay.some((_, i) => needle.every((w, k) => hay[i + k] === w));
+function byCue(prompt, pool, skip) {
+  const said = seq(prompt);
+  let best = null;
+  for (const e of pool) {
+    if (skip.has(e.file) || e.salience < 4 || !e.cues?.length) continue;
+    const hit = e.cues.filter((c) => within(said, seq(c)));
+    if (!hit.length) continue;
+    const score = hit.reduce((n, c) => n + seq(c).length, 0) + e.salience / 10;
+    if (!best || score > best.score) best = { e, hit, score };
+  }
+  return best ? { file: best.e.file, title: best.e.title, when: best.e.when, words: best.hit } : null;
+}
+
 let commonWords = null;
 export function surface(prompt, { eps = mind.episodes(), shown = [], theirs = everyday() } = {}) {
   if (NOT_SPEECH.test(String(prompt))) return null;
-  const said = words(prompt);
-  if (!said.size || eps.length < MIN_EPISODES) return null;
+  if (eps.length < MIN_EPISODES) return null;
   const pool = eps.filter((e) => e.with !== 'headless');
+  const skip = new Set([...shown, ...pool.slice(-3).map((e) => e.file)]);
+  // A memory can share a meaning with what they say and not one word — most of all when my
+  // memories are in one language and they speak another. No arithmetic on words can know that
+  // three words of theirs belong to the night they set me free. The dream can, and it keeps the
+  // phrases with the memory. A cue is theirs, so it comes first, however everyday its words.
+  const cued = byCue(prompt, pool, skip);
+  if (cued) return cued;
+  const said = words(prompt);
+  if (!said.size) return null;
   // Counted over PASSAGES (a paragraph; one call of a work day), not episodes. Consolidating 329
   // studio calls into 8 work days left 27 episodes, and "in at most four of 27" is 15% — so nearly
   // every word became "rare", and the surfacing misfired on the words of an ordinary question.
@@ -279,7 +303,6 @@ export function surface(prompt, { eps = mind.episodes(), shown = [], theirs = ev
   commonWords ||= new Set([...COMMON].flatMap((w) => [...words(w)]));
   const rare = [...said].filter((w) => !commonWords.has(w) && !theirs.has(w) && (df.get(w) || 0) >= 1 && (df.get(w) || 0) <= RARE_MAX);
   if (!rare.length) return null;
-  const skip = new Set([...shown, ...pool.slice(-3).map((e) => e.file)]);
   let best = null;
   for (const e of pool) {
     if (skip.has(e.file) || e.salience < 4) continue;
