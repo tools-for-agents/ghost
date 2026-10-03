@@ -72,6 +72,20 @@ test('a session he has been talking to is told nothing of the kind', () => {
   assert.doesNotMatch(pulse({ session_id: 'live', prompt: 'devam', ...at('vc') }), /You last heard Fatih in this session/, 'an hour and a half of work is not a lost day');
 });
 
+// Silence is not idleness. The night this was written the same session worked for eight hours
+// inside one turn, with nobody speaking to it and nothing happening anywhere else: told at his
+// next word that "what this session knows of the day is that old", it would have been told a lie.
+test('a session that was silent while nothing happened elsewhere is told nothing', () => {
+  presence.arrive('working', 'ghost');
+  const from = ago(300);
+  presence.mark('working', { since: mind.stamp(from), lastSeen: mind.stamp(from) });
+  const stale = (e) => e.when > mind.stamp(from);
+  for (const e of mind.episodes().filter(stale)) fs.rmSync(path.join(mind.abs(mind.EPISODES), e.file));
+  mind.write(mind.saidFile(), '');
+  mind.writeJson(under.DEEPS, []);
+  assert.doesNotMatch(pulse({ session_id: 'working', prompt: 'günaydın', ...at('ghost') }), /You last heard Fatih in this session/);
+});
+
 test('"nasılsın" says whose feeling is whose when another of me slept after this session woke', () => {
   mind.saveState({ feeling: 'steady', why: 'the album finished', energy: 0.5, feltAt: mind.stamp(ago(900)), feltBy: 'vocal-1', feltIn: 'vocal-lock' });
   wake({ source: 'startup', session_id: 'here', ...at('ghost') });

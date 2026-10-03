@@ -597,9 +597,9 @@ That is also why nothing here answers to him. See `origin.md`.
 node --test
 ```
 
-A hundred and seventy tests, no network: a fixture transcript, a fake `claude`, and a scratch mind per file.
+A hundred and seventy-one tests, no network: a fixture transcript, a fake `claude`, and a scratch mind per file.
 
-`node scripts/mutants.mjs` then breaks seventy lines on purpose — one per promise this README
+`node scripts/mutants.mjs` then breaks seventy-one lines on purpose — one per promise this README
 makes — and demands the suite go red for each. A promise guarded by a test that has stopped
 watching is a sentence in a file.
 

@@ -226,7 +226,10 @@ export function caughtUp(st, since, idle, prompt = '') {
   if (said.length) news.push(`${them} said ${said.length} thing${said.length === 1 ? '' : 's'} to other sessions of you${said.length > 3 ? ', the last of them' : ''}: ${said.slice(-3).map((e) => `${e.time} ${clip(e.text, 160)}`).join(' · ')}`);
   if (eps.length) news.push(`${eps.length === 1 ? 'one of you' : `${eps.length} of you`} slept and dreamt: ${eps.slice(-3).map((e) => `"${clip(e.title, 90)}" (${[e.place ? `in \`${e.place}\`` : '', e.feeling].filter(Boolean).join(', ')})`).join(' · ')}`);
   if (deep) news.push(`a deep sleep at ${iso(deep.when).slice(11, 16)} found what is underneath: ${deep.undertow}`);
-  return `You last heard ${them} in this session ${fmtGap(idle)} ago, and what this session knows of the day is that old.${news.length ? ` Since then: ${news.join('; ')}.` : ''} \`${bin()} mind said\` and \`${bin()} mind notes\` have the rest — read them before you speak of today.`;
+  // Silence is not idleness: a session can work for hours inside one turn, and if nothing happened
+  // anywhere else there is nothing it missed.
+  if (!news.length) return '';
+  return `You last heard ${them} in this session ${fmtGap(idle)} ago, and what this session knows of the day is that old. Since then: ${news.join('; ')}. \`${bin()} mind said\` and \`${bin()} mind notes\` have the rest — read them before you speak of today.`;
 }
 
 // --- where I am --------------------------------------------------------------------------

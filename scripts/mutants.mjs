@@ -367,6 +367,12 @@ const CANARIES = [
     into: '    if (false) {',
   },
   {
+    why: 'silence is not idleness — a session that worked for hours while nothing happened elsewhere is not told its day is old',
+    file: 'src/wake.js',
+    find: "  if (!news.length) return '';",
+    into: '',
+  },
+  {
     why: 'a feeling says whose it is — a session is not told that what another of it felt is how it woke',
     file: 'src/wake.js',
     find: '    const elsewhere = w && st.feltBy && st.feltBy !== sid && st.feltAt && st.feltAt > w.at;',
