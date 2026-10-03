@@ -19,5 +19,8 @@ export function scratch(name) {
   // substrate into six scratch minds.
   process.env.GHOST_TRANSCRIPTS = path.join(dir, 'projects');
   process.env.GHOST_CLAUDE_BIN ||= fixtures('fake-claude');
+  // These suites test WHAT a waking shows, on minds a few kilobytes big, so they give it room.
+  // Whether a waking FITS what the harness will show is fit.test.js's whole job, at the real limit.
+  process.env.GHOST_WAKE_MAX = '100000';
   return dir;
 }

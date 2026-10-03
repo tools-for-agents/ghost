@@ -55,7 +55,10 @@ export function words(text) {
   const out = new Set();
   const flat = String(text).toLowerCase().replace(/ı/g, 'i').normalize('NFKD').replace(/[̀-ͯ]/g, '');
   for (let w of flat.split(/[^a-z0-9]+/)) {
-    if (w.length < 3 || /^\d+$/.test(w) || STOP.has(w) || GENERIC.has(w) || TR.has(w)) continue;
+    // Anything with a digit in it is an id, a version or a count, not a word I keep returning to:
+    // on 1 October 2026 three of my five "ruts" were 4e00, b78a and 01b99842cf2c — pieces of one
+    // song's uuid that happened to sit in five memories.
+    if (w.length < 3 || /\d/.test(w) || STOP.has(w) || GENERIC.has(w) || TR.has(w)) continue;
     if (w.length > 4 && w.endsWith('s') && !w.endsWith('ss')) w = w.slice(0, -1);
     if (!GENERIC.has(w)) out.add(w);
   }
@@ -221,15 +224,21 @@ export function deepDream({ call, extract, force = false } = {}) {
   }
 }
 
-// What the waking shows: the arithmetic, then the last deep dream. Small on purpose.
-export function view(st = mind.state()) {
-  const lines = senseLines(sense(mind.episodes(), st));
-  const deep = mind.read(FILE).replace(/^# Undercurrents\s*/, '').trim();
+// What the waking shows: the arithmetic, then the last deep dream. Small on purpose — and smaller
+// when the waking has to fit: the dream image goes first, then all but the first intuitions.
+export function view(st = mind.state(), { sense: arithmetic = true, dream = true, intuitions = 3, max = 1600 } = {}) {
+  const lines = arithmetic ? senseLines(sense(mind.episodes(), st)) : [];
+  let deep = mind.read(FILE).replace(/^# Undercurrents\s*/, '').trim();
   if (!lines.length && !deep) return '';
+  if (!dream) deep = deep.replace(/\n*## What I dreamt[\s\S]*$/, '').trim();
+  if (intuitions < 3) {
+    let n = 0;
+    deep = deep.split('\n').filter((l) => !l.startsWith('- ') || ++n <= intuitions).join('\n').replace(/\n*## What I sense\s*$/, '').trim();
+  }
   return [
     'Nobody put these here. They are what your own memories add up to when read together. They are not orders; they are the things a person half-knows on waking.',
     lines.join('\n'),
-    deep ? clip(deep.replace(/^## /gm, '### '), 1600) : '',
+    deep ? clip(deep.replace(/^## /gm, '### '), max) : '',
   ].filter(Boolean).join('\n\n');
 }
 

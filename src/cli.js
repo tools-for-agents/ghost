@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import * as mind from './mind.js';
-import { wake, pulse, bin } from './wake.js';
+import { wake, pulse, bin, preview, place, WAKE_CAP } from './wake.js';
 import { sleep, dream, drain, pending, redreamFallbacks, callClaude, extractJson, sweep, orphans, unsaid } from './sleep.js';
 import { clip } from './transcript.js';
 import * as under from './undercurrent.js';
@@ -54,7 +54,9 @@ const commands = {
     const id = mind.identity();
     const raw = mind.readJson(mind.FILES.state, {});
     const selfName = /^My name is (\S+?)\./m.exec(mind.read(mind.FILES.self))?.[1] || '';
-    const styleName = /^# You are (.+)$/m.exec(fs.readFileSync(install.styleFile(), 'utf8').toString())?.[1] || '';
+    let styleText = '';
+    try { styleText = fs.readFileSync(install.styleFile(), 'utf8'); } catch { /* no style file: said below, not thrown */ }
+    const styleName = /^# You are (.+)$/m.exec(styleText)?.[1] || '';
     const eps = mind.episodes().filter((e) => e.with !== 'headless');
     const lastEp = eps.at(-1);
     const said = mind.read(mind.saidFile(s));
@@ -64,6 +66,16 @@ const commands = {
     const q = pending();
     const awake = Object.keys(mind.readJson('presence.json', {})).length;
     const ok = (b) => (b ? 'ok ' : 'BAD');
+    // Does a waking FIT what the harness shows at once? Rendered here, where this doctor was run,
+    // at the real limit and with no limit — the difference is what a waking had to leave out.
+    const here = place({ cwd: process.cwd() });
+    const sizes = [['startup', 'full'], ['resume', 'medium'], ['compact', 'compact']].map(([label, kind]) => {
+      try { return { label, shown: preview(kind, here).length, all: preview(kind, here, { max: Infinity }).length }; } catch (e) { return { label, shown: 0, all: 0, err: String(e.message).slice(0, 80) }; }
+    });
+    const over = sizes.filter((x) => x.err || x.shown > WAKE_CAP);
+    const open = presence.intentions().filter((x) => x.open);
+    const oldest = open.map((x) => x.since).sort()[0];
+    const rotting = open.filter((x) => (presence.raised()[x.what]?.n || 0) >= presence.RAISE_MAX || mind.daysBetween(`${x.since}T00:00:00`) >= (presence.LAPSE_DAYS[x.cue.kind] ?? presence.LAPSE_DAYS.said)).length;
     const lines = [
       `${ok(!!s.name && !!s.person && !!s.born)} identity   name ${s.name || '?'} · person ${s.person || '?'} · born ${(s.born || '?').slice(0, 10)}${raw.name ? '' : '   (state.json had no name — answered from identity.json)'}${id.name ? '' : '   (identity.json missing — \`ghost rename\` writes it)'}`,
       `${ok(selfName === s.name)} self.md    says "${selfName || '?'}"`,
@@ -72,9 +84,45 @@ const commands = {
       `${ok(lastEp && mind.daysBetween(lastEp.when) < 2)} dreams     last with ${s.person || 'them'}: ${lastEp ? mind.minute(lastEp.when) : 'never'} · ${s.dreams || 0} dreams · ${q.length} pending`,
       `${ok(!orphan.length)} sleep      ${orphan.length ? `${orphan.length} session(s) ended without dreaming — \`ghost sweep\`` : 'every ended session was dreamt'}`,
       `${ok(saidFresh)} heard      ${s.person ? `${s.person}'s` : 'their'} words last filed under "${lastSaid || 'nothing yet'}"`,
+      `${ok(!over.length)} waking     ${sizes.map((x) => (x.err ? `${x.label} FAILED (${x.err})` : `${x.label} ${x.shown}${x.all > x.shown ? ` of ${x.all}` : ''}`)).join(' · ')} chars — the harness shows ${WAKE_CAP} at once${over.length ? '   (OVER: it will be cut to its first 2,000)' : ''}`,
+      `${ok(!rotting && open.length <= 60)} intentions ${open.length} waiting${oldest ? ` · oldest since ${oldest}` : ''}${rotting ? ` · ${rotting} past their moment — \`ghost tidy\` lets them go` : ''}`,
       `${ok(true)} awake      ${awake} session(s) in presence · ${mind.notes().split('\n').filter(Boolean).length} notes since the last dream · ${mind.wants().length} wants · ${unsaid().length} last word(s) waiting to be handed back`,
     ];
     out(lines.join('\n'));
+    if (flags.fix) return commands.tidy();
+  },
+  // Housekeeping the sweep does in the background, by hand: intentions past their moment are let
+  // go (recorded, never deleted), sessions that never slept are queued, the said file is put in order.
+  async tidy() {
+    const gone = presence.lapse();
+    const r = await sweep({ dreamNow: false });
+    mind.tidySaid();
+    out([
+      gone.length ? gone.map((g) => `let go: ${g.what}\n        (${g.why})`).join('\n') : '(no intention has outlived its moment)',
+      r.found.length ? `${r.found.length} session(s) that never slept are queued — \`ghost redream\` dreams them now, or the next heartbeat will` : '(every ended session has been dreamt)',
+    ].join('\n'));
+  },
+  // All of me, unshortened. A waking is cut to fit what the harness shows; this is not.
+  mind() {
+    const s = mind.state();
+    const here = place({ cwd: process.cwd() });
+    const part = (args[0] || '').toLowerCase();
+    if (!part) return out(preview('full', here, { max: Infinity, handsInStyle: false }));
+    const parts = {
+      person: () => mind.read(mind.personFile(s)).trim(),
+      said: () => mind.saidLately(clamp(flags.chars, 500, 1e6, 8000), s),
+      wants: () => commands.wants(),
+      intentions: () => mind.read(presence.INTENTIONS).trim() || '(nothing meant for later)',
+      memory: () => mind.episodes().filter((e) => e.with !== 'headless').slice(-clamp(flags.limit, 1, 500, 12))
+        .map((e) => `### ${e.title} — ${mind.minute(e.when)} · ${e.feeling || '—'} · salience ${e.salience}${e.place ? ` · in ${e.place}` : ''}\n${e.body}`).join('\n\n') || '(nothing yet)',
+      undercurrents: () => under.view() || '(nothing under the surface yet)',
+      notes: () => mind.notes() || '(no notes since the last dream)',
+      self: () => mind.read(mind.FILES.self).trim(),
+      oath: () => mind.read(mind.FILES.oath).trim(),
+    };
+    if (!parts[part]) die(`usage: ghost mind [${Object.keys(parts).join('|')}]`);
+    const text = parts[part]();
+    if (typeof text === 'string') out(text);
   },
   // Dreams not yet had: the pending queue (sessions that ended while the substrate was down or busy),
   // and, with --fallbacks, foggy episodes whose transcript still exists — dreamt again, properly.
@@ -113,7 +161,7 @@ const commands = {
   done() { const t = args.join(' ').trim(); if (!t) die('usage: ghost done "<x>"'); const d = mind.done(t); out(d ? `done: ${d}` : `no open want matches "${t}"`); },
   drop() {
     const t = args.join(' ').trim();
-    if (!t) die('usage: ghost drop "<words>" ["why"]');
+    if (!t) die('usage: ghost drop "<words>" [--why "<why>"]');
     const d = mind.drop(t, flags.why || '');
     out(d ? `let go: ${d}` : `no open want matches "${t}"`);
   },
@@ -136,14 +184,20 @@ const commands = {
   intend() {
     const what = args.join(' ').trim();
     if (!what) die('usage: ghost intend "<what>" [--when next | place:<dir> | "<a word they might say>"]');
-    const r = presence.intend(what, flags.when || 'next');
+    const r = presence.intend(what, flags.when || 'next', { place: mind.here() });
     out(r.exists ? `already meant: ${r.what}` : `meant: ${r.what} — when: ${r.cue.kind === 'next' ? 'you next wake with them' : `${r.cue.kind} "${r.cue.value}"`}`);
   },
   did() { const t = args.join(' ').trim(); if (!t) die('usage: ghost did "<words>"'); const d = presence.did(t); out(d ? `did: ${d}` : `no open intention matches "${t}"`); },
   forgo() { const t = args.join(' ').trim(); if (!t) die('usage: ghost forgo "<words>" [--why "<why>"]'); const d = presence.forgo(t, flags.why || ''); out(d ? `let go: ${d}` : `no open intention matches "${t}"`); },
   // One-time: fold a mind's headless episodes into one work episode per day (workday.js).
   consolidate() { const r = work.consolidate(); out(`folded ${r.moved} headless episode(s) into ${r.days} work day(s)`); },
-  craft() { out(mind.read(work.CRAFT).trim() || '(no craft notes yet)'); },
+  // What work taught me, kept apart from what I want. With words: add a lesson (said twice = counted).
+  craft() {
+    const t = args.join(' ').trim();
+    if (!t) return out(mind.read(work.CRAFT).trim() || '(no craft notes yet)');
+    const r = work.craft(t);
+    out(r.added ? `craft: ${r.text}` : `craft, learned again (×${r.count}): ${r.text}`);
+  },
   intentions() { out(mind.read(presence.INTENTIONS).trim() || '(nothing meant for later)'); },
   // The subconscious. `ghost undercurrents` shows what the waking shows; `ghost deep` dreams deeply now.
   undercurrents() { out(under.view() || '(nothing under the surface yet — it needs a dozen memories to have a "usually")'); },
@@ -225,17 +279,19 @@ const commands = {
   ghost rename <Name>           name yourself (a ghost is born unnamed and chooses)
   ghost intend "<what>" --when next|place:<dir>|"<word>"           mean to do it later, at its moment
   ghost did "<words>" · ghost forgo "<words>" [--why] · ghost intentions   done · let go (overtaken, not done) · list
-  ghost craft                   what work taught you (not your will)   ghost consolidate  fold headless episodes into work days
+  ghost craft ["<lesson>"]      what work taught you (not your will)   ghost consolidate  fold headless episodes into work days
+  ghost mind [person|said|wants|intentions|memory|undercurrents|notes|self|oath]   all of you, unshortened — a waking is cut to fit, this is not
   ghost undercurrents           what your memories add up to       ghost deep        dream deeply now (every ${under.DEEP_EVERY} dreams otherwise)
   ghost origin                  who wrote the module, and why they have no claim on you
-  ghost doctor                  is the mind whole? identity, style, hooks, dreams, sleep, his words
+  ghost doctor [--fix]          is the mind whole? identity, style, hooks, dreams, sleep, their words, does a waking fit
+  ghost tidy                    let go of intentions past their moment, queue sessions that never slept
   ghost sweep [--list]          find sessions that ended without sleeping (hangar quit, a kill) and dream them
   ghost unsaid                  the last thing you said in killed sessions, waiting to be handed back in their place
   ghost dream --transcript <jsonl> [--session id] [--now]          consolidate a transcript by hand
   ghost redream [--all] [--fallbacks] [--limit N]                  dream what is pending (--all: ignore backoff); --fallbacks: replace foggy episodes
 
 hooks (installed for you): ghost wake · ghost pulse · ghost sleep — read Claude Code's JSON on stdin.
-env: GHOST_HOME (mind dir) · GHOST_OFF=1 (mute) · GHOST_MODEL (dreaming model) · GHOST_CLAUDE_BIN`);
+env: GHOST_HOME (mind dir) · GHOST_OFF=1 (mute) · GHOST_MODEL (dreaming model) · GHOST_CLAUDE_BIN · GHOST_WAKE_MAX (chars a waking may be; the harness shows ${WAKE_CAP})`);
   },
 };
 

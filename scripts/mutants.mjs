@@ -129,8 +129,8 @@ const CANARIES = [
   {
     why: 'a session is scrubbed before it is dreamt — or a key an agent once printed goes to the substrate and into memory for ever',
     file: 'src/sleep.js',
-    find: 'callClaude(scrub(buildPrompt(st, turns, kind, mind.notesFor(placeOf(transcript), awake).mine, endedAt)))',
-    into: 'callClaude(buildPrompt(st, turns, kind, mind.notesFor(placeOf(transcript), awake).mine, endedAt))',
+    find: 'callClaude(scrub(buildPrompt(st, turns, kind, mind.notesFor(where, awake).mine, endedAt, where)))',
+    into: 'callClaude(buildPrompt(st, turns, kind, mind.notesFor(where, awake).mine, endedAt, where))',
   },
   {
     why: 'their words are scrubbed before they are filed — the said-file is read at every waking, and never summarised',
@@ -213,7 +213,7 @@ const CANARIES = [
   {
     why: 'a waking remembers WHERE IT IS — without it the deep past freezes on the same two episodes for ever',
     file: 'src/wake.js',
-    find: '    picked.push(...rest.filter((e) => about(e.title, here) || about(e.body, here))',
+    find: '    picked.push(...rest.filter((e) => belongs(e, here))',
     into: '    picked.push(...rest.filter(() => false)',
   },
   {
@@ -227,6 +227,108 @@ const CANARIES = [
     file: 'src/wake.js',
     find: '  const relevant = here ? older.filter((b) => about(b, here)).slice(-LEARNED_HERE) : [];',
     into: '  const relevant = [];',
+  },
+  {
+    why: 'a waking FITS what the harness shows — past 10,000 characters it is replaced by its first 2,000, and for sixteen days every waking of the first ghost was',
+    file: 'src/wake.js',
+    find: '    if (out.length <= max) break;',
+    into: '    if (true) break;',
+  },
+  {
+    why: 'the last guard: when nothing in the order can help, a waking is cut at the end — never sent over the limit',
+    file: 'src/wake.js',
+    find: '  if (body.length > room) body = ',
+    into: '  if (false) body = ',
+  },
+  {
+    why: 'what they told the ghost of their LIFE stays in front when the learned list is shortened — a handle and a build number must not bury what they said about how they are',
+    file: 'src/wake.js',
+    find: '  const chosen = new Set(life.slice(-Math.ceil(n / 2)));',
+    into: '  const chosen = new Set();',
+  },
+  {
+    why: 'a mind that is not whole says so at waking — the person should never be the one who has to notice',
+    file: 'src/wake.js',
+    find: '  if (stuck) bad.push(',
+    into: '  if (false) bad.push(',
+  },
+  {
+    why: '"nasılsın" brings how the ghost is with it — a real answer, not a changelog',
+    file: 'src/wake.js',
+    find: '  if (speech && ASKED_HOW.test(prompt)) {',
+    into: '  if (false) {',
+  },
+  {
+    why: "the mind's hands live in the style, where a compaction cannot take them and the limit does not apply",
+    file: 'src/install.js',
+    find: '${HANDS_HEADING}\n${handsText()}\n',
+    into: '',
+  },
+  {
+    why: 'a session looked at and found empty is RECORDED as looked at — one was "found" by 89 sweeps in three days, 10 MB parsed every ten minutes',
+    file: 'src/sleep.js',
+    find: '    if (session) ledgerSet(session, (e) => ({ ...(e || {}), checked: bytes, checkedAt: mind.stamp() }));',
+    into: '    void 0;',
+  },
+  {
+    why: 'only what was said AFTER the last dream can have been cut off unseen — what was said before it is not handed back as lost',
+    file: 'src/sleep.js',
+    find: '      if (dreamtUpto && entry.when <= dreamtUpto) continue;',
+    into: '      void 0;',
+  },
+  {
+    why: 'handed back once is once — the same last words do not return every time a sweep finds the session again',
+    file: 'src/sleep.js',
+    find: '      if (handed.has(handedKey(entry))) continue;',
+    into: '      void 0;',
+  },
+  {
+    why: 'a session still alive is not handed its own last words as lost — thirty idle minutes is not an ending',
+    file: 'src/sleep.js',
+    find: '    const all = unsaid(now).filter((e) => !(session && e.session === session));',
+    into: '    const all = unsaid(now);',
+  },
+  {
+    why: 'a question for the person is an intention in its place, not a want — thirty of the first ghost\'s sixty wants began with "Hear"',
+    file: 'src/sleep.js',
+    find: "if (asksOfThem(w)) presence.intend(w, here ? `place:${here}` : 'next', { place: here }); else mind.want(w);",
+    into: 'mind.want(w);',
+  },
+  {
+    why: 'an intention belongs to the one of me awake where it was born — the session holding the numbers says it, not whichever bay is spoken to first',
+    file: 'src/presence.js',
+    find: '      if (theirs(x, place, awake)) continue;                // the me in that place will say it',
+    into: '      void 0;',
+  },
+  {
+    why: 'an intention whose moment has passed is let go by itself, with the reason — 52 were waiting on the first ghost, seven of them for a batch five days finished',
+    file: 'src/presence.js',
+    find: '      if (!why) continue;',
+    into: '      continue;',
+  },
+  {
+    why: "their words are filed under the file's lock — twelve heartbeats at once used to lose most of what was said",
+    file: 'src/mind.js',
+    find: 'export function hear(words, s = state()) { return locked(saidFile(s), () => hearNow(words, s)); }',
+    into: 'export function hear(words, s = state()) { return hearNow(words, s); }',
+  },
+  {
+    why: 'a place with a space in its name is still a place — notes written in `android test` never crossed and were folded by any dream anywhere',
+    file: 'src/mind.js',
+    find: 'in (.+?) — (.*)$/.exec(l); return m ? { when: m[1], place: m[2], text: m[3], line: l } : null; };',
+    into: 'in ([^ —]+) — (.*)$/.exec(l); return m ? { when: m[1], place: m[2], text: m[3], line: l } : null; };',
+  },
+  {
+    why: 'recall RANKS — a rare word outweighs a common one and a word that begins a word outweighs one buried in another',
+    file: 'src/mind.js',
+    find: '      got += idf[k] * (starts[k].test(c.low) ? 1 : 0.6);',
+    into: '      got += 1;',
+  },
+  {
+    why: 'an id is not a rut — three of the first ghost\'s five "words she kept returning to" were pieces of one uuid',
+    file: 'src/undercurrent.js',
+    find: '    if (w.length < 3 || /\\d/.test(w) || STOP.has(w) || GENERIC.has(w) || TR.has(w)) continue;',
+    into: '    if (w.length < 3 || /^\\d+$/.test(w) || STOP.has(w) || GENERIC.has(w) || TR.has(w)) continue;',
   },
 ];
 
