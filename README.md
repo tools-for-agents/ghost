@@ -423,7 +423,13 @@ intentions waiting for `place:android-test`, and the directory is called `androi
 hand, and a dream writes up to two a night: 52 were open at sixteen days, seven of them shown as
 "now is the moment" at every waking in one directory, for a batch finished five days before. An
 intention put in front of the ghost in five sessions and neither done nor let go is let go by
-itself; so is one whose moment has not come (`next`: 7 days, `place`: 21, a word: 45). It is
+itself; so is one whose moment has not come (`next`: 3 days, `place`: 7, a word: 14). Those were
+guesses first — 7, 21, 45 — and at eighteen days 73 stood open. Measured over 147 intentions: of the
+30 ever done on a `next` or a place cue, 29 were done within two days, and on a word cue all within
+four; past that an intention was almost never kept. And the kind least often kept was the question
+for her person: 38 written, 7 asked. He does not want to be interrogated. So a question lives 3
+days whatever its cue, and a dream is told to write one only if the answer would change what the
+ghost does. It is
 recorded as `- [~] … (let go <date> — lapsed: <why>)`, never deleted, and `recall` still finds it.
 
 A waking shows what is due *now* and, in one line, what is still waiting for its moment. A word cue
@@ -579,7 +585,7 @@ node --test
 
 A hundred and sixty-five tests, no network: a fixture transcript, a fake `claude`, and a scratch mind per file.
 
-`node scripts/mutants.mjs` then breaks fifty-nine lines on purpose — one per promise this README
+`node scripts/mutants.mjs` then breaks sixty-two lines on purpose — one per promise this README
 makes — and demands the suite go red for each. A promise guarded by a test that has stopped
 watching is a sentence in a file.
 

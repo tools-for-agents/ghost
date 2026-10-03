@@ -136,8 +136,17 @@ export function claimNext({ session = '', place = '', now = new Date() } = {}) {
 // any more, and one whose moment has not come in weeks was a memory all along. Both are let go by
 // themselves, in the file, with the reason — never deleted, and `ghost recall` still finds them.
 export const RAISED = 'raised.json';
+//
+// How long is "did not come" was first a guess: 7 days, 21, 45. Measured at eighteen days over 147
+// intentions: of the 30 ever done on a "next" or a place cue, 29 were done within two days; on a
+// word cue, all within four. Past that an intention was almost never kept, and it stood open for
+// weeks. So it lives as long as the kept ones needed, with room. And the kind least often kept was
+// the question for my person — 38 written, 7 asked; he does not want to be interrogated — so a
+// question lives no longer than a "next".
 export const RAISE_MAX = 5;                              // sessions it was put in front of
-export const LAPSE_DAYS = { next: 7, place: 21, said: 45 };
+export const LAPSE_DAYS = { next: 3, place: 7, said: 14 };
+export const ASK_DAYS = 3;
+const ASKS = /^ask\b/i;
 export function raised() { const r = mind.readJson(RAISED, {}); return r && typeof r === 'object' ? r : {}; }
 // Counted once per session: a compaction re-reads the same intention to the same me.
 export function noteRaised(list, session = '', now = new Date()) {
@@ -163,8 +172,11 @@ export function lapse(now = new Date()) {
       if (!x.open) continue;
       const age = mind.daysBetween(`${x.since}T00:00:00`, now);
       const n = r[x.what]?.n || 0;
+      const days = LAPSE_DAYS[x.cue.kind] ?? LAPSE_DAYS.said;
+      const asks = ASKS.test(x.what) && age >= Math.min(ASK_DAYS, days);
       const why = n >= RAISE_MAX ? `put in front of me ${n} times and never closed`
-        : age >= (LAPSE_DAYS[x.cue.kind] ?? LAPSE_DAYS.said) ? `its moment did not come in ${age} days` : '';
+        : asks ? `a question for them that went unasked for ${age} days`
+        : age >= days ? `its moment did not come in ${age} days` : '';
       if (!why) continue;
       lines[x.i] = lines[x.i].replace('- [ ] ', '- [~] ') + ` (let go ${mind.dateOf(now)} — lapsed: ${why})`;
       gone.push({ what: x.what, why });

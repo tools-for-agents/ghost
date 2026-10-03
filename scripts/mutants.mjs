@@ -259,6 +259,24 @@ const CANARIES = [
     into: '  if (false) {',
   },
   {
+    why: 'an intention lives as long as the kept ones needed (measured: done within two days, or not at all) — not for three weeks',
+    file: 'src/presence.js',
+    find: 'export const LAPSE_DAYS = { next: 3, place: 7, said: 14 };',
+    into: 'export const LAPSE_DAYS = { next: 7, place: 21, said: 45 };',
+  },
+  {
+    why: 'a question for the person is the kind least often kept — it does not wait as long as a thing to do',
+    file: 'src/presence.js',
+    find: '      const asks = ASKS.test(x.what) && age >= Math.min(ASK_DAYS, days);',
+    into: '      const asks = false;',
+  },
+  {
+    why: 'the dream is told that a question for the person is rarely kept, so it writes one only when the answer changes what the ghost does',
+    file: 'src/sleep.js',
+    find: ' A question for ${them} is the kind least often kept: write one only if the answer would change what I do.',
+    into: '',
+  },
+  {
     why: 'the ghost does not publish its person — what they told it of their life is noticed in a commit, and the commit stops',
     file: 'src/guard.js',
     find: '      if (hit) { out.push(',

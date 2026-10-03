@@ -62,22 +62,31 @@ test('a word cue born in a place fires there while one of me is awake there — 
   assert.match(pulse({ session_id: 's-vc', prompt: 'devam', ...at('vc') }), /You meant to do this when they said "devam": Start First Ferry right away/);
 });
 
+// How long is "did not come"? Measured on the first ghost at eighteen days, over 147 intentions:
+// of the 30 that were ever done on a "next" or a place cue, 29 were done within two days; on a
+// word cue, all within four. Past that an intention was almost never kept — and it waited three
+// weeks to be let go, so 73 stood open. And the kind least often kept was the question for her
+// person: 38 written, 7 asked. He does not want to be interrogated. So an intention lives as long
+// as the kept ones needed, with room (3 days, 7, 14), and a question for them lives 3.
 test('an intention whose moment did not come is let go by itself — recorded with why, never deleted', () => {
   const day = (n) => mind.dateOf(new Date(Date.now() - n * 86400e3));
   mind.write(presence.INTENTIONS, [
     '# What I mean to do, and when', '',
-    `- [ ] Report day four device by device — when: next   (since ${day(8)}, in vc)`,
-    `- [ ] Still fresh for next time — when: next   (since ${day(6)})`,
-    `- [ ] Generate all twelve tracks — when: place:vc   (since ${day(22)})`,
-    `- [ ] Check the pen label — when: place:momento   (since ${day(20)})`,
-    `- [ ] Say what I watched him ship — when: said:dükkan   (since ${day(46)})`,
-    `- [ ] Ask about the raffle computer — when: said:piyango   (since ${day(44)})`,
+    `- [ ] Report day four device by device — when: next   (since ${day(4)}, in vc)`,
+    `- [ ] Still fresh for next time — when: next   (since ${day(2)})`,
+    `- [ ] Generate all twelve tracks — when: place:vc   (since ${day(8)})`,
+    `- [ ] Check the pen label — when: place:momento   (since ${day(6)})`,
+    `- [ ] Say what I watched him ship — when: said:dükkan   (since ${day(15)})`,
+    `- [ ] Bring the lottery computer up — when: said:piyango   (since ${day(13)})`,
+    `- [ ] Ask whether the new chorus lands for him — when: place:studio   (since ${day(4)})`,
+    `- [ ] Ask what he thought of the cover — when: said:dinledim   (since ${day(2)})`,
     '- [x] An old done one — when: next   (since 2026-01-01) (done 2026-01-02)', '',
   ].join('\n'));
   const gone = presence.lapse();
-  assert.deepEqual(gone.map((g) => g.what), ['Report day four device by device', 'Generate all twelve tracks', 'Say what I watched him ship']);
-  assert.match(line('Report day four'), /^- \[~\] Report day four device by device — when: next {3}\(since [0-9-]+, in vc\) \(let go \d{4}-\d\d-\d\d — lapsed: its moment did not come in 8 days\)$/);
-  assert.deepEqual(presence.intentions().filter((x) => x.open).map((x) => x.what), ['Still fresh for next time', 'Check the pen label', 'Ask about the raffle computer']);
+  assert.deepEqual(gone.map((g) => g.what), ['Report day four device by device', 'Generate all twelve tracks', 'Say what I watched him ship', 'Ask whether the new chorus lands for him']);
+  assert.match(line('Report day four'), /^- \[~\] Report day four device by device — when: next {3}\(since [0-9-]+, in vc\) \(let go \d{4}-\d\d-\d\d — lapsed: its moment did not come in 4 days\)$/);
+  assert.match(line('new chorus lands'), /lapsed: a question for them that went unasked for 4 days\)$/, 'a question says what it was');
+  assert.deepEqual(presence.intentions().filter((x) => x.open).map((x) => x.what), ['Still fresh for next time', 'Check the pen label', 'Bring the lottery computer up', 'Ask what he thought of the cover']);
   assert.deepEqual(presence.lapse(), [], 'once');
   // The deep sleep is told what was let go, the way it is told what was done — so it does not accuse me of it.
   assert.ok(mind.doneLately(7, presence.INTENTIONS).some((d) => d.how === 'let go' && /twelve tracks/.test(d.text)));
@@ -134,6 +143,7 @@ test('a question for them is not a want: the dream files it as an intention in i
     assert.match(prompt, /This session happened in the directory `logic`/);
     assert.match(prompt, /"when": "place:logic \| a rare word Fatih might say \| next"/, 'the dream is told the place by its real name');
     assert.match(prompt, /"about_their_life"/);
+    assert.match(prompt, /A question for Fatih is the kind least often kept: write one only if the answer would change what I do\./);
     const wants = mind.wants();
     assert.ok(wants.includes('Become genuinely expert at cleaning his vocals'), 'a real want is a want');
     assert.ok(!wants.some((w) => /growls sound clean/.test(w)), 'a question is not');
