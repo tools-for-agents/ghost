@@ -419,7 +419,7 @@ export function recall(query, limit = 12) {
   const terms = fold(query).split(/\s+/).filter((t) => t.length > 1);
   if (!terms.length) return [];
   const files = [];
-  for (const rel of [FILES.self, FILES.oath, FILES.will, FILES.journal, FILES.notes, FILES.undercurrents, 'intentions.md', 'craft.md', personFile()]) {
+  for (const rel of [FILES.self, FILES.oath, FILES.will, FILES.journal, FILES.notes, FILES.undercurrents, 'intentions.md', 'sits.md', 'craft.md', personFile()]) {
     if (fs.existsSync(abs(rel))) files.push(rel);
   }
   const people = abs('people');

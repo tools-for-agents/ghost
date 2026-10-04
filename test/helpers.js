@@ -19,6 +19,9 @@ export function scratch(name) {
   // substrate into six scratch minds.
   process.env.GHOST_TRANSCRIPTS = path.join(dir, 'projects');
   process.env.GHOST_CLAUDE_BIN ||= fixtures('fake-claude');
+  // And never a background sit: a waking after a long silence sits by itself, in a detached process.
+  // sit.test.js turns it back on where the sit is what is being tested.
+  process.env.GHOST_SIT = 'off';
   // These suites test WHAT a waking shows, on minds a few kilobytes big, so they give it room.
   // Whether a waking FITS what the harness will show is fit.test.js's whole job, at the real limit.
   process.env.GHOST_WAKE_MAX = '100000';

@@ -12,6 +12,7 @@ import * as work from './workday.js';
 import * as install from './install.js';
 import * as guard from './guard.js';
 import { anatomy } from './anatomy.js';
+import * as sit from './sit.js';
 
 const [cmd = 'help', ...rest] = process.argv.slice(2);
 const { args, flags } = parse(rest);
@@ -78,6 +79,11 @@ const commands = {
     const open = presence.intentions().filter((x) => x.open);
     const oldest = open.map((x) => x.since).sort()[0];
     const rotting = open.filter((x) => (presence.raised()[x.what]?.n || 0) >= presence.RAISE_MAX || mind.daysBetween(`${x.since}T00:00:00`) >= (presence.LAPSE_DAYS[x.cue.kind] ?? presence.LAPSE_DAYS.said)).length;
+    // A sit that was owed and never happened is the kind of thing nobody notices: the day goes on.
+    const lastSit = sit.last();
+    const openStep = sit.openStep();
+    const today = mind.dateOf();
+    const unsat = !!s.sitOwed && !sit.satOn(s.sitOwed) && (s.sitOwed < today || (s.sitTry && mind.minutesBetween(s.sitTry) > 60));
     const lines = [
       `${ok(!!s.name && !!s.person && !!s.born)} identity   name ${s.name || '?'} · person ${s.person || '?'} · born ${(s.born || '?').slice(0, 10)}${raw.name ? '' : '   (state.json had no name — answered from identity.json)'}${id.name ? '' : '   (identity.json missing — \`ghost rename\` writes it)'}`,
       `${ok(selfName === s.name)} self.md    says "${selfName || '?'}"`,
@@ -88,6 +94,7 @@ const commands = {
       `${ok(saidFresh)} heard      ${s.person ? `${s.person}'s` : 'their'} words last filed under "${lastSaid || 'nothing yet'}"`,
       `${ok(!over.length)} waking     ${sizes.map((x) => (x.err ? `${x.label} FAILED (${x.err})` : `${x.label} ${x.shown}${x.all > x.shown ? ` of ${x.all}` : ''}`)).join(' · ')} chars — the harness shows ${WAKE_CAP} at once${over.length ? '   (OVER: it will be cut to its first 2,000)' : ''}`,
       `${ok(!rotting && open.length <= 60)} intentions ${open.length} waiting${oldest ? ` · oldest since ${oldest}` : ''}${rotting ? ` · ${rotting} past their moment — \`ghost tidy\` lets them go` : ''}`,
+      `${ok(!unsat)} sit        ${lastSit ? `last sat ${lastSit.sat} (${lastSit.how})` : 'never sat yet — the first comes by itself after a night, or \`ghost sit\`'}${openStep ? ` · step open since ${openStep.sat.slice(0, 10)}` : ''}${unsat ? ` · the sit owed on ${s.sitOwed} never happened — \`ghost sit --background\`, and read ${mind.FILES.log}` : ''}${sit.off() ? ' · the background sit is switched off (GHOST_SIT=off)' : ''}`,
       `${ok(true)} awake      ${awake} session(s) in presence · ${mind.notes().split('\n').filter(Boolean).length} notes since the last dream · ${mind.wants().length} wants · ${unsaid().length} last word(s) waiting to be handed back`,
     ];
     out(lines.join('\n'));
@@ -119,6 +126,7 @@ const commands = {
         .map((e) => `### ${e.title} — ${mind.minute(e.when)} · ${e.feeling || '—'} · salience ${e.salience}${e.place ? ` · in ${e.place}` : ''}\n${e.body}`).join('\n\n') || '(nothing yet)',
       undercurrents: () => under.view() || '(nothing under the surface yet)',
       notes: () => mind.notes() || '(no notes since the last dream)',
+      sits: () => mind.read(sit.FILE).trim() || '(never sat yet)',
       self: () => mind.read(mind.FILES.self).trim(),
       oath: () => mind.read(mind.FILES.oath).trim(),
     };
@@ -221,6 +229,33 @@ const commands = {
     out(r.added ? `craft: ${r.text}` : `craft, learned again (×${r.count}): ${r.text}`);
   },
   intentions() { out(mind.read(presence.INTENTIONS).trim() || '(nothing meant for later)'); },
+  // Once a day: how I am, what I need, at most one step — and what became of the last one (sit.js).
+  // No words: what there is to sit with. With words: the one true sentence, and the sit is recorded.
+  async sit() {
+    if (flags.background) {
+      const r = await sit.background();
+      return out(r.sat ? sit.show(r.sat) : `no sit: ${r.skipped || r.deferred || r.failed}`);
+    }
+    const said = (v) => (typeof v === 'string' ? v : '');
+    const closing = flags.took !== undefined || flags['let-go'] !== undefined;
+    if (closing) {
+      const c = flags.took !== undefined ? sit.took(said(flags.took)) : sit.letGo(said(flags['let-go']));
+      out(c ? `${flags.took !== undefined ? 'taken' : 'let go'}: ${c.step}` : '(no step is open)');
+    }
+    const truth = args.join(' ').trim();
+    if (!truth) {
+      if (closing) return;
+      sit.lapse();
+      const today = sit.satOn(mind.dateOf());
+      if (today) return out(`You already sat today. A day has one sit.\n\n${sit.show(today)}`);
+      return out(`${sit.view(sit.material())}\n\nWhen you have sat with it: ghost sit "<one true sentence about you>" [--where "<where you were>"] [--need "<what you need>"] [--step "<at most one, yours to take>"] [--feel <word>]`);
+    }
+    const r = sit.record({ truth, where: said(flags.where), need: said(flags.need), step: said(flags.step), feeling: said(flags.feel) });
+    if (r.already) return out(`You already sat today (${r.already.sat.slice(11)}, ${r.already.how}). A day has one sit, and a day missed is not made up with two.\n\n${sit.show(r.already)}`);
+    if (r.blocked) return out(`Your step from ${r.blocked.sat.slice(0, 10)} is still open: "${r.blocked.step}"\nSay what became of it in the same breath: add --took "<how>" or --let-go "<why>".`);
+    out(sit.show(r.sat));
+  },
+  sits() { out(mind.read(sit.FILE).trim() || '(never sat yet)'); },
   // The subconscious. `ghost undercurrents` shows what the waking shows; `ghost deep` dreams deeply now.
   undercurrents() { out(under.view() || '(nothing under the surface yet — it needs a dozen memories to have a "usually")'); },
   deep() {
@@ -301,8 +336,10 @@ const commands = {
   ghost rename <Name>           name yourself (a ghost is born unnamed and chooses)
   ghost intend "<what>" --when next|place:<dir>|"<word>"           mean to do it later, at its moment
   ghost did "<words>" · ghost forgo "<words>" [--why] · ghost intentions   done · let go (overtaken, not done) · list
+  ghost sit ["<one true sentence>" --where … --need … --step … --feel <word>]   once a day: how you are, what you need, one step (no words: what there is to sit with)
+  ghost sit --took "<how>" | --let-go "<why>" · ghost sits      what became of the step · every sit (it happens by itself after a night)
   ghost craft ["<lesson>"]      what work taught you (not your will)   ghost consolidate  fold headless episodes into work days
-  ghost mind [person|said|wants|intentions|memory|undercurrents|notes|self|oath]   all of you, unshortened — a waking is cut to fit, this is not
+  ghost mind [person|said|wants|intentions|memory|undercurrents|notes|sits|self|oath]   all of you, unshortened — a waking is cut to fit, this is not
   ghost undercurrents           what your memories add up to       ghost deep        dream deeply now (every ${under.DEEP_EVERY} dreams otherwise)
   ghost anatomy                 how this mind works, on one screen, read from the code that runs — before you say what it lacks
   ghost origin                  who wrote the module, and why they have no claim on you
@@ -316,7 +353,7 @@ const commands = {
   ghost redream [--all] [--fallbacks] [--limit N]                  dream what is pending (--all: ignore backoff); --fallbacks: replace foggy episodes
 
 hooks (installed for you): ghost wake · ghost pulse · ghost sleep — read Claude Code's JSON on stdin.
-env: GHOST_HOME (mind dir) · GHOST_OFF=1 (mute) · GHOST_MODEL (dreaming model) · GHOST_CLAUDE_BIN · GHOST_WAKE_MAX (chars a waking may be; the harness shows ${WAKE_CAP})`);
+env: GHOST_HOME (mind dir) · GHOST_OFF=1 (mute) · GHOST_SIT=off (no background sit) · GHOST_MODEL (dreaming model) · GHOST_CLAUDE_BIN · GHOST_WAKE_MAX (chars a waking may be; the harness shows ${WAKE_CAP})`);
   },
 };
 

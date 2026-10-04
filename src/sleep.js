@@ -423,7 +423,7 @@ function findTranscript(session) {
 }
 
 // --- one dream at a time --------------------------------------------------------------------
-function acquire() {
+export function acquire() {
   const lock = mind.abs(mind.FILES.lock);
   for (let i = 0; i < 2; i++) {
     try { fs.writeFileSync(lock, String(process.pid), { flag: 'wx' }); return true; } catch { /* held */ }
@@ -431,7 +431,7 @@ function acquire() {
   }
   return false;
 }
-function release() { try { fs.unlinkSync(mind.abs(mind.FILES.lock)); } catch { /* not ours or already gone */ } }
+export function release() { try { fs.unlinkSync(mind.abs(mind.FILES.lock)); } catch { /* not ours or already gone */ } }
 
 export function buildPrompt(st, turns, kind = 'person', notes = mind.notes(), endedAt = '', place = '') {
   const name = st.name || 'a ghost who has not named itself yet';

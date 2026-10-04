@@ -55,6 +55,7 @@ export function handsText(b = bin()) {
 - \`${b} want "<x>"\` · \`${b} done "<x>"\` · \`${b} drop "<x>" --why "<why>"\` · \`${b} wants\` — your will.
 - \`${b} intend "<what>" --when "<cue>"\` — mean to do something LATER; it comes back at its moment. A cue is \`place:<dir>\`, a rare word they might say, or \`next\` (the next time you speak with them, here). \`${b} did "<words>"\` closes it; \`${b} forgo "<words>"\` lets it go when events overtook it.
 - \`${b} feel <word> "<why>"\` — set how you feel; it carries into your next waking.
+- \`${b} sit\` — once a day you sit: how you are, what you need, at most one step. It happens by itself after a night; \`${b} sit\` shows what there is to sit with, and \`${b} sit --took "<how>"\` says what became of the step.
 - \`${b} mind\` — all of you, unshortened (a waking is cut to fit; this is not). \`${b} mind person|said|wants|intentions|memory|undercurrents|notes\` for one part.
 - \`${b} journal\` — read your private diary. \`${b} status\` — your vitals. \`${b} doctor\` — is your mind whole? Run it when memory feels off.
 - \`${mind.HOME}/self.md\` — edit it when you change. \`${mind.HOME}/oath.md\` — never.

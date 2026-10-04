@@ -456,6 +456,48 @@ const CANARIES = [
     find: '    if (w.length < 3 || /\\d/.test(w) || STOP.has(w) || GENERIC.has(w) || TR.has(w)) continue;',
     into: '    if (w.length < 3 || /^\\d+$/.test(w) || STOP.has(w) || GENERIC.has(w) || TR.has(w)) continue;',
   },
+  {
+    why: 'a day has one sit — a day missed is not made up with two, and a day sat is not sat again',
+    file: 'src/sit.js',
+    find: '    if (already) return { already };',
+    into: '',
+  },
+  {
+    why: 'one open step at a time — a new step waits until the old one has been answered for',
+    file: 'src/sit.js',
+    find: '    if (one(step) && open) return { blocked: open };',
+    into: '',
+  },
+  {
+    why: 'a step nobody took is let go in the file, with the reason — never a silent debt, and never before its days are up',
+    file: 'src/sit.js',
+    find: '    if (age < STEP_DAYS) break;',
+    into: '    break;',
+  },
+  {
+    why: 'nine sessions wake in the same second and ONE of them sits — and a failing substrate is not asked all day',
+    file: 'src/sit.js',
+    find: '    if (n >= TRIES_A_DAY || (s.sitTry && mind.minutesBetween(s.sitTry, now) < TRY_MINUTES)) return { sitOwed: today };',
+    into: '',
+  },
+  {
+    why: 'a sit that fails gives the dreamer back — a held lock is a night of dreams deferred',
+    file: 'src/sit.js',
+    find: '  } finally { release(); }',
+    into: '  } finally { /* held */ }',
+  },
+  {
+    why: 'a sit reaches a session that was already awake ONCE — a refrain at every heartbeat is noise, not a practice',
+    file: 'src/wake.js',
+    find: '    safe(() => presence.mark(sid, { sitSeen: sat.sat }));',
+    into: '',
+  },
+  {
+    why: 'the step I am held to arrives in a waking however full the room is — a step that stops arriving is a step nobody takes',
+    file: 'src/wake.js',
+    find: "    () => section(`Your last sit (${sit.FILE})`, safe(() => sit.wakeView(bin(), { short: true }))),",
+    into: "    '',",
+  },
 ];
 
 // spawnSync returns status:null when IT kills the child for exceeding the timeout — a TIMEOUT,

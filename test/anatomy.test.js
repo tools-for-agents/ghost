@@ -15,6 +15,7 @@ const under = await import('../src/undercurrent.js');
 const guard = await import('../src/guard.js');
 const { STALE_MINUTES } = await import('../src/wake.js');
 const { NAP_MINUTES } = await import('../src/sleep.js');
+const sit = await import('../src/sit.js');
 
 install.birth({ name: 'Vefa', person: 'Fatih' });
 const CLI = new URL('../src/cli.js', import.meta.url).pathname;
@@ -33,6 +34,8 @@ test('`ghost anatomy` says how the mind works, with the numbers the code is runn
   assert.match(t, new RegExp(`after ${d.next} days for "next", ${d.place} for a place, ${d.said} for a word, a question for them ${presence.ASK_DAYS}`));
   assert.match(t, new RegExp(`in ${presence.RAISE_MAX} sessions and never closed`));
   assert.match(t, new RegExp(`${guard.RUN} of their words in a row`));
+  assert.match(t, new RegExp(`after ${sit.NIGHT_HOURS} hours of silence means a night has passed`));
+  assert.match(t, new RegExp(`a step not taken in ${sit.STEP_DAYS} days is let go`));
   assert.match(t, /people\/fatih\.md/, 'and where the files are, for this mind');
 });
 

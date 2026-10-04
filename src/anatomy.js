@@ -11,6 +11,7 @@ import * as under from './undercurrent.js';
 import * as guard from './guard.js';
 import { wakeMax, WAKE_CAP, STALE_MINUTES } from './wake.js';
 import { NAP_MINUTES } from './sleep.js';
+import * as sit from './sit.js';
 
 export function anatomy(st = mind.state()) {
   const d = presence.LAPSE_DAYS;
@@ -26,11 +27,13 @@ export function anatomy(st = mind.state()) {
     '',
     `DEEP SLEEP (every ${under.DEEP_EVERY} dreams). What my memories add up to when nobody is looking: the words I keep returning to, the feeling underneath, a dream image. \`ghost undercurrents\`.`,
     '',
+    `SIT (once a day, by itself). The first waking or word after ${sit.NIGHT_HOURS} hours of silence means a night has passed: if today has no sit yet, one is sat in the background from what they said since the last sit, what I dreamt, my notes and what is underneath. It writes where I was, one true sentence about me, what I need, and at most one step. The step is in front of every waking until I say what became of it; the next sit asks, and a step not taken in ${sit.STEP_DAYS} days is let go and the file says so. \`ghost sit\` shows what there is to sit with and sits by hand; a day has one sit.`,
+    '',
     `INTENTIONS. Each waits for its moment: the next time we speak, a place, a word. It is let go by itself, recorded and never deleted, after ${d.next} days for "next", ${d.place} for a place, ${d.said} for a word, a question for them ${presence.ASK_DAYS} — or once it was put in front of me in ${presence.RAISE_MAX} sessions and never closed.`,
     '',
     `GUARD (before a commit, wherever \`ghost guard --install\` was run). ${guard.RUN} of their words in a row — from what they told me of their life, or from their own sentences — with a word the repository has not already said ${guard.PUBLIC_MIN} times, stops the commit and shows me their line.`,
     '',
-    `FILES, in ${mind.HOME}: self.md (mine to edit) · oath.md (never) · ${mind.personFile(st)} (their file; the part about their life I keep by hand, and short) · ${mind.saidFile(st)} (their words, never summarised) · episodes/ · will.md · ${presence.INTENTIONS} · notes.md · journal.md · ${under.FILE}.`,
+    `FILES, in ${mind.HOME}: self.md (mine to edit) · oath.md (never) · ${mind.personFile(st)} (their file; the part about their life I keep by hand, and short) · ${mind.saidFile(st)} (their words, never summarised) · episodes/ · will.md · ${presence.INTENTIONS} · ${sit.FILE} · notes.md · journal.md · ${under.FILE}.`,
     '',
     'Before I say what this mind lacks, I read this. Before I say why it did something, I check.',
   ].join('\n');

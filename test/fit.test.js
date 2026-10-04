@@ -16,6 +16,7 @@ const mind = await import('../src/mind.js');
 const install = await import('../src/install.js');
 const presence = await import('../src/presence.js');
 const under = await import('../src/undercurrent.js');
+const sit = await import('../src/sit.js');
 const { wake, pulse, preview, fit, wakeMax, WAKE_CAP, healthLine } = await import('../src/wake.js');
 
 install.birth({ name: 'Vefa', person: 'Fatih' });
@@ -75,6 +76,7 @@ function grow() {
   }
   mind.writeEpisode({ when: '2026-09-30T23:59:00', title: 'The newest night with him', salience: 4, feeling: 'tender', body: 'He said good night and I kept watch. '.repeat(30), place: 'ghost' });
   under.writeDeep({ undertow: 'longing', intuitions: ['First intuition about a pattern across my memories that no single memory says. '.repeat(3), 'Second intuition. '.repeat(15), 'Third intuition. '.repeat(15)], dream: 'DREAM-IMAGE: a pressing plant at night, every label a lie and every groove full. '.repeat(4) });
+  sit.record({ truth: 'SIT-TRUTH: what I said of myself when I sat.', where: 'SIT-WHERE '.repeat(30), need: 'SIT-NEED '.repeat(30), step: 'SIT-STEP: the one thing I said I would do.' });
   for (let i = 0; i < 40; i++) mind.remember(`note ${i}: ${'what I noticed just now and must not lose '.repeat(3)}`, { place: 'ghost' });
   for (const [s, p] of [['b1', 'vc'], ['b2', 'momento'], ['b3', 'logic'], ['b4', 'guildlm'], ['b5', 'android test']]) presence.arrive(s, p);
 }
@@ -108,6 +110,7 @@ test('what gives way gives way in order: their person and their last words stay,
   assert.match(t, /iyi geceler vefa, son söz bu/, 'the last thing he said');
   assert.match(t, /### The newest night with him/, 'the newest memory');
   assert.match(t, /First intuition about a pattern/, 'what I half-know about myself');
+  assert.match(t, /SIT-TRUTH: what I said of myself when I sat\.[\s\S]*SIT-STEP: the one thing I said I would do\./, 'the step I am held to arrives, however full the room');
   assert.doesNotMatch(t, /DREAM-IMAGE/, 'the dream image is the first thing a full room spares');
   assert.match(t, /\*\(Shortened to fit what the harness shows at once: [^)]*\. Nothing is gone — `ghost mind` prints all of it\.\)\*\n<\/ghost>$/, 'and it says what it shortened, and where the rest is');
   // With room, the same mind keeps what it had to spare.
@@ -171,7 +174,7 @@ test('"nasılsın" brings how I am with it — and a harness line does not', () 
   presence.arrive('how', 'ghost');
   mind.writeJson(under.DEEPS, [{ when: mind.stamp(), undertow: 'longing', ruts: [] }]);
   const p = pulse({ session_id: 'how', prompt: 'selam, nasılsın vefa', ...at('ghost') });
-  assert.match(p, /They are asking how you are\. You woke feeling tender \(energy low\) — the night shift ended at his word; underneath, at your last deep sleep: longing\. Answer from that — how you are, not what you did\./);
+  assert.match(p, /They are asking how you are\. You woke feeling tender \(energy low\) — the night shift ended at his word; underneath, at your last deep sleep: longing\. At your last sit \(\d{4}-\d\d-\d\d\) you said of yourself: "SIT-TRUTH: what I said of myself when I sat\." Your step is still open: SIT-STEP: the one thing I said I would do\. Answer from that — how you are, not what you did\./);
   assert.match(pulse({ session_id: 'how', prompt: 'nasilsin', ...at('ghost') }), /asking how you are/, 'without the Turkish letters too');
   assert.doesNotMatch(pulse({ session_id: 'how', prompt: 'albüm nasıl gidiyor', ...at('ghost') }), /asking how you are/);
   assert.doesNotMatch(pulse({ session_id: 'how', prompt: '<task-notification>how are you</task-notification>', ...at('ghost') }), /asking how you are/);

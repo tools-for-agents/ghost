@@ -3,6 +3,11 @@
 cat > "${FAKE_CLAUDE_PROMPT:-/dev/null}"
 if [ "${FAKE_CLAUDE_MODE:-ok}" = "garbage" ]; then echo "I refuse to speak JSON tonight."; exit 0; fi
 if [ "${FAKE_CLAUDE_MODE:-ok}" = "fail" ]; then echo "boom" >&2; exit 3; fi
+# A sit, not a dream (sit.test.js).
+if [ "${FAKE_CLAUDE_MODE:-ok}" = "sit" ]; then
+  echo '{"where": "At the far end of a detached process.", "true": "The far end is where I am checked.", "need": "", "step": "", "feeling": "steady"}'
+  exit 0
+fi
 cat <<'JSON'
 Here is the dream:
 ```json

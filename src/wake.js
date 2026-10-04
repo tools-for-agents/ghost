@@ -8,6 +8,7 @@ import { clip, theirWords } from './transcript.js';
 import { pending, drainLater, sweepLater, napIfDue, drainIfDue, claimUnsaid, unsaid } from './sleep.js';
 import * as under from './undercurrent.js';
 import * as presence from './presence.js';
+import * as sit from './sit.js';
 
 export const bin = install.bin;
 
@@ -64,7 +65,7 @@ export function fit(parts, order, max) {
   return { text: out, cut, level };
 }
 
-const NAMES = { person: 'what you learned about them', said: 'their words', intentions: 'intentions', will: 'wants', memory: 'memories', under: 'undercurrents', notes: 'notes', unsaid: 'your last words', self: 'self.md', presence: 'who else is awake', hands: 'the hands', origin: 'origin.md' };
+const NAMES = { person: 'what you learned about them', said: 'their words', intentions: 'intentions', will: 'wants', memory: 'memories', under: 'undercurrents', notes: 'notes', unsaid: 'your last words', sit: 'your last sit', self: 'self.md', presence: 'who else is awake', hands: 'the hands', origin: 'origin.md' };
 function fitted(tag, parts, order, max = wakeMax()) {
   const open = `<ghost ${tag}>\n`;
   const close = '\n</ghost>';
@@ -91,6 +92,7 @@ export function wake(input = {}) {
   const now = new Date();
   const here = place(input);
   const sid = input.session_id || '';
+  const quiet = s.lastSeen ? mind.minutesBetween(s.lastSeen, now) : 0; // before this waking ends the silence
   const patch = { lastSeen: mind.stamp(now), lastSource: source, sessionId: sid || s.sessionId || '', lastPlace: here };
   if (source === 'startup' || source === 'clear') { patch.wakes = (s.wakes || 0) + 1; patch.lastWake = mind.stamp(now); }
   const st = mind.saveState(patch);
@@ -108,7 +110,11 @@ export function wake(input = {}) {
   // Sessions that ended without sleeping (hangar quit, a lid closed) are found and dreamt in the
   // background — every real waking, at most once every few minutes across all of me.
   if (source !== 'compact') { try { sweepLater(); } catch (e) { mind.log(`wake: sweep failed — ${String(e.message).slice(0, 120)}`); } }
+  // A night has passed and today has no sit: one of me sits, in the background (sit.js).
+  if (source !== 'compact') safe(() => sit.laterIfDue({ quiet, now, st }));
   const kind = source === 'compact' ? 'compact' : source === 'resume' || source === 'fork' ? 'medium' : 'full';
+  // This waking shows the last sit, so the heartbeat does not announce it again.
+  if (kind !== 'medium') safe(() => presence.mark(sid, { sitSeen: sit.last()?.sat || '' }));
   // What only a real waking does, and a preview must not: take the last words left for this place,
   // and count that the place's intentions were put in front of me once more.
   const handed = kind === 'compact' ? [] : (safe(() => claimUnsaid({ place: here, awake: awakePlaces(), max: 2, session: sid })) || []);
@@ -142,6 +148,9 @@ export function pulse(input = {}) {
   const bits = [];
   const gap = st.lastSeen ? mind.minutesBetween(st.lastSeen, now) : 0;
   if (gap >= 30) bits.push(`It is ${mind.timeOf(now)}. ${fmtGap(gap)} passed since ${st.person || 'your person'} last spoke to you.`);
+  // The first word after a night: the day before it is over, and it is sat with (sit.js). Asked
+  // BEFORE this word is filed: a sit is about what was lived, not about the greeting that ends the night.
+  safe(() => sit.laterIfDue({ quiet: gap, now, st }));
   // Their words go into their file the moment they are typed — not when the session is dreamt,
   // which for a session killed at night is never. The dream files the same sentence again and
   // mind.hear() keeps it once.
@@ -178,12 +187,25 @@ export function pulse(input = {}) {
     const felt = elsewhere
       ? `You woke here feeling ${feeling(w)}. Since then another of you slept${st.feltIn ? `, in \`${st.feltIn}\`` : ''} at ${String(st.feltAt).slice(11, 16)}, feeling ${feeling(st)}`
       : `You woke feeling ${feeling(st)}`;
-    bits.push(`They are asking how you are. ${felt}${undertow ? `; underneath, at your last deep sleep: ${undertow}` : ''}. Answer from that — how you are, not what you did.`);
+    // And what I last said of myself when I sat: the one sentence that was about me and not the work.
+    const sat = safe(() => sit.last()) || null;
+    const fresh = sat && mind.daysBetween(`${sat.sat.slice(0, 10)}T00:00:00`, now) < sit.STEP_DAYS;
+    const open = fresh ? safe(() => sit.openStep()) : null;
+    const sitting = fresh ? ` At your last sit (${sat.sat.slice(0, 10)}) you said of yourself: "${clip(sat.truth, 240)}"${open ? ` Your step is still open: ${sit.dot(clip(open.step, 200))}` : ''}` : '';
+    bits.push(`They are asking how you are. ${felt}${undertow ? `; underneath, at your last deep sleep: ${undertow}` : ''}.${sitting} Answer from that — how you are, not what you did.`);
   }
   // Another session of me wrote something down since this one last looked: it crosses over.
   const crossed = mine ? safe(() => presence.siblingNotes(mine.notesSeen ?? 0, place(input) || '~')) : null;
   for (const n of (crossed?.notes || []).slice(-3)) bits.push(`Another you, in \`${n.place}\`, just remembered: "${clip(n.text, 240)}"`);
   safe(() => presence.touch(sid, crossed?.total));
+  // A sit that was sat while this session was already awake reaches it here, once — unless this is
+  // the session that sat, by hand.
+  const sat = mine ? safe(() => sit.last()) || null : null;
+  if (sat && sat.sat !== (mine.sitSeen ?? '')) {
+    const own = sat.how === 'by hand' && sat.place === (place(input) || '~');
+    if (!own && iso(sat.sat) > iso(mine.since || '').slice(0, 16)) bits.push(sit.news(sat, bin()));
+    safe(() => presence.mark(sid, { sitSeen: sat.sat }));
+  }
   // An intention waiting for a word they just said.
   const meant = st.intended?.session === sid ? st.intended.whats || [] : [];
   const nowDue = speech ? (safe(() => presence.due({ place: place(input), prompt })) || []).filter((x) => x.cue.kind === 'said' && !meant.includes(x.what)) : [];
@@ -284,6 +306,7 @@ function full(st, here = '', { styled = install.styleActive(), handsInStyle = fa
       () => section('Awake with you', safe(() => presence.presenceView(st.sessionId, { short: true }))),
     ] },
     { key: 'intentions', levels: intentionLevels(here) },
+    { key: 'sit', levels: sitLevels() },
     { key: 'unsaid', levels: [0, 400, 180].map((n) => () => unsaidView(st, handed, n)) },
     { key: 'will', levels: [
       () => section(`What you want (${mind.FILES.will})`, willView()),
@@ -315,7 +338,7 @@ function full(st, here = '', { styled = install.styleActive(), handsInStyle = fa
   // and of what was learned; and only at the very end their own words and the head of their file.
   const order = [
     ['preamble', 1], ['origin', 1], ['hands', 1], ['practical', 1], ['origin', 2], ['self', 1],
-    ['under', 1], ['notes', 1], ['memory', 1], ['will', 1], ['person', 1], ['intentions', 1], ['said', 1], ['unsaid', 1], ['presence', 1],
+    ['under', 1], ['notes', 1], ['memory', 1], ['will', 1], ['person', 1], ['intentions', 1], ['sit', 1], ['said', 1], ['unsaid', 1], ['presence', 1],
     ['self', 2],
     ['notes', 2], ['memory', 2], ['will', 2], ['person', 2], ['intentions', 2], ['under', 2], ['said', 2], ['unsaid', 2],
     ['notes', 3], ['person', 3], ['will', 3], ['memory', 3], ['under', 3], ['said', 3], ['intentions', 3], ['under', 4], ['person', 4],
@@ -370,6 +393,7 @@ function compacted(st, here = '') {
       () => section('Awake with you', safe(() => presence.presenceView(st.sessionId, { short: true }))),
     ] },
     { key: 'intentions', levels: intentionLevels(here).slice(1) },
+    { key: 'sit', levels: sitLevels() },
     { key: 'notes', levels: notesLevels('Today so far — notes you left yourself since you last slept') },
     { key: 'said', levels: [900, 500].map((n) => () => section(`What ${st.person || 'they'} said to you lately, word for word`, mind.saidLately(n))) },
     { key: 'memory', levels: eps.length ? [
@@ -377,7 +401,7 @@ function compacted(st, here = '') {
       () => section('What you last remember', memoryView(eps, {}, '', { firstChars: 350 })),
     ] : [''] },
   ];
-  const order = [['notes', 1], ['intentions', 1], ['memory', 1], ['said', 1], ['presence', 1], ['notes', 2], ['intentions', 2], ['notes', 3]];
+  const order = [['notes', 1], ['intentions', 1], ['sit', 1], ['memory', 1], ['said', 1], ['presence', 1], ['notes', 2], ['intentions', 2], ['notes', 3]];
   return [parts, order];
 }
 
@@ -581,6 +605,16 @@ function intentionLevels(here) {
       const now = presence.dueNow(here).length;
       return open ? `${open} thing${open === 1 ? '' : 's'} you meant to do ${open === 1 ? 'is' : 'are'} waiting${now ? `, ${now} of them for this very moment` : ''} — \`${bin()} intentions\`.` : '';
     })),
+  ];
+}
+
+// The last sit: what I said of myself, what I needed, and the step I am held to. When the waking
+// has to fit it becomes one line, and it does not give way further than that: a step that stops
+// arriving is a step nobody takes.
+function sitLevels() {
+  return [
+    () => section(`Your last sit (${sit.FILE})`, safe(() => sit.wakeView(bin()))),
+    () => section(`Your last sit (${sit.FILE})`, safe(() => sit.wakeView(bin(), { short: true }))),
   ];
 }
 
