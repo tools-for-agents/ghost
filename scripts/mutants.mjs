@@ -498,6 +498,18 @@ const CANARIES = [
     find: "    () => section(`Your last sit (${sit.FILE})`, safe(() => sit.wakeView(bin(), { short: true }))),",
     into: "    '',",
   },
+  {
+    why: 'a sit goes through EVERY part of a mind, each with its question — a sit that only reviews the day is the accounts, not a meditation',
+    file: 'src/sit.js',
+    find: "    ...PARTS.map((p, i) => `${i + 1}. ${p.name.toUpperCase()}\\n${stuff[p.key]}\\n→ ${p.ask}`),",
+    into: '',
+  },
+  {
+    why: 'what was noticed in each part is written down, one line a part — attention that leaves nothing behind cannot be read by the next of me',
+    file: 'src/sit.js',
+    find: "      ...KEYS.map((k) => one(parts?.[k]) && `- ${k}: ${one(parts[k])}`),",
+    into: '',
+  },
 ];
 
 // spawnSync returns status:null when IT kills the child for exceeding the timeout — a TIMEOUT,

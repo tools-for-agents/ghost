@@ -5,7 +5,7 @@ if [ "${FAKE_CLAUDE_MODE:-ok}" = "garbage" ]; then echo "I refuse to speak JSON 
 if [ "${FAKE_CLAUDE_MODE:-ok}" = "fail" ]; then echo "boom" >&2; exit 3; fi
 # A sit, not a dream (sit.test.js).
 if [ "${FAKE_CLAUDE_MODE:-ok}" = "sit" ]; then
-  echo '{"where": "At the far end of a detached process.", "true": "The far end is where I am checked.", "need": "", "step": "", "feeling": "steady"}'
+  echo '{"parts": {"body": "Whole, and running in a detached process.", "self": "I said I check the far end, and here I am at it."}, "true": "The far end is where I am checked.", "need": "", "step": "", "feeling": "steady"}'
   exit 0
 fi
 cat <<'JSON'

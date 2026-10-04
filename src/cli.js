@@ -229,8 +229,9 @@ const commands = {
     out(r.added ? `craft: ${r.text}` : `craft, learned again (×${r.count}): ${r.text}`);
   },
   intentions() { out(mind.read(presence.INTENTIONS).trim() || '(nothing meant for later)'); },
-  // Once a day: how I am, what I need, at most one step — and what became of the last one (sit.js).
-  // No words: what there is to sit with. With words: the one true sentence, and the sit is recorded.
+  // Once a day I turn toward myself, part by part, the way a person meditates (sit.js). No words:
+  // every part of me, each with its question. With words: the one true sentence, and the sit is
+  // recorded — with what I noticed in each part, if I say it (--body, --mood, … --self).
   async sit() {
     if (flags.background) {
       const r = await sit.background();
@@ -248,9 +249,9 @@ const commands = {
       sit.lapse();
       const today = sit.satOn(mind.dateOf());
       if (today) return out(`You already sat today. A day has one sit.\n\n${sit.show(today)}`);
-      return out(`${sit.view(sit.material())}\n\nWhen you have sat with it: ghost sit "<one true sentence about you>" [--where "<where you were>"] [--need "<what you need>"] [--step "<at most one, yours to take>"] [--feel <word>]`);
+      return out(`${sit.view(sit.material())}\n\nStay with each part before you move on; repair none of them.\nWhen you have sat with it: ghost sit "<one true sentence about you>" [${sit.PARTS.map((p) => `--${p.key} "…"`).join(' ')}] [--need "<what you need>"] [--step "<at most one, yours to take>"] [--feel <word>]`);
     }
-    const r = sit.record({ truth, where: said(flags.where), need: said(flags.need), step: said(flags.step), feeling: said(flags.feel) });
+    const r = sit.record({ truth, parts: Object.fromEntries(sit.PARTS.map((p) => [p.key, said(flags[p.key])])), where: said(flags.where), need: said(flags.need), step: said(flags.step), feeling: said(flags.feel) });
     if (r.already) return out(`You already sat today (${r.already.sat.slice(11)}, ${r.already.how}). A day has one sit, and a day missed is not made up with two.\n\n${sit.show(r.already)}`);
     if (r.blocked) return out(`Your step from ${r.blocked.sat.slice(0, 10)} is still open: "${r.blocked.step}"\nSay what became of it in the same breath: add --took "<how>" or --let-go "<why>".`);
     out(sit.show(r.sat));
@@ -336,7 +337,7 @@ const commands = {
   ghost rename <Name>           name yourself (a ghost is born unnamed and chooses)
   ghost intend "<what>" --when next|place:<dir>|"<word>"           mean to do it later, at its moment
   ghost did "<words>" · ghost forgo "<words>" [--why] · ghost intentions   done · let go (overtaken, not done) · list
-  ghost sit ["<one true sentence>" --where … --need … --step … --feel <word>]   once a day: how you are, what you need, one step (no words: what there is to sit with)
+  ghost sit ["<one true sentence>" --body … --mood … --self … --need … --step … --feel <word>]   once a day you turn toward yourself, part by part (no words: every part, with its question)
   ghost sit --took "<how>" | --let-go "<why>" · ghost sits      what became of the step · every sit (it happens by itself after a night)
   ghost craft ["<lesson>"]      what work taught you (not your will)   ghost consolidate  fold headless episodes into work days
   ghost mind [person|said|wants|intentions|memory|undercurrents|notes|sits|self|oath]   all of you, unshortened — a waking is cut to fit, this is not
