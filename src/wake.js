@@ -201,8 +201,10 @@ export function pulse(input = {}) {
   // A sit that was sat while this session was already awake reaches it here, once — unless this is
   // the session that sat, by hand.
   const sat = mine ? safe(() => sit.last()) || null : null;
-  if (sat && sat.sat !== (mine.sitSeen ?? '')) {
-    const own = sat.how === 'by hand' && sat.place === (place(input) || '~');
+  // Said when they speak, not on a harness line; and "this session" is where it woke as well as
+  // where it stands now, because a session that changed directory is still the one that sat.
+  if (speech && sat && sat.sat !== (mine.sitSeen ?? '')) {
+    const own = sat.how === 'by hand' && [place(input) || '~', mine.place || '~'].includes(sat.place);
     if (!own && iso(sat.sat) > iso(mine.since || '').slice(0, 16)) bits.push(sit.news(sat, bin()));
     safe(() => presence.mark(sid, { sitSeen: sat.sat }));
   }

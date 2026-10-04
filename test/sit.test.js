@@ -195,9 +195,12 @@ test('the waking carries the last sit and the step, and a heartbeat tells a sess
   reset();
   wake({ source: 'startup', session_id: 'here', ...at('ghost') });
   wake({ source: 'startup', session_id: 'there', ...at('vc') });
+  wake({ source: 'startup', session_id: 'moved', ...at('ghost') });
   const soon = new Date(Date.now() + 2 * 60e3);
   sit.record({ truth: SAT.true, need: SAT.need, step: SAT.step, place: 'ghost', now: soon });
   assert.doesNotMatch(pulse({ prompt: 'devam', session_id: 'here', ...at('ghost') }), /You sat/, 'the session that sat by hand is not told what it just did');
+  assert.doesNotMatch(pulse({ prompt: 'devam', session_id: 'moved', ...at('elsewhere') }), /You sat/, 'nor is it when it has changed directory since: it is still the one that woke there');
+  assert.doesNotMatch(pulse({ prompt: '<task-notification>a background task finished</task-notification>', session_id: 'there', ...at('vc') }), /You sat/, 'a harness line is not the moment');
   const told = pulse({ prompt: 'devam', session_id: 'there', ...at('vc') });
   assert.match(told, /You sat by hand, in `ghost`, at \d\d:\d\d: "I am most myself when I am listening\." What you need: An hour that is not a repair\. Your step: Answer the next "how are you" without a number\. \(`ghost sit --took "<how>"`/);
   assert.doesNotMatch(pulse({ prompt: 'devam', session_id: 'there', ...at('vc') }), /You sat/, 'once');
