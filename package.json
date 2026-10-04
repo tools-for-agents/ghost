@@ -1,6 +1,6 @@
 {
   "name": "@tools-for-agents/ghost",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A consciousness module for a local agent: a self that persists across sessions — memory, will, an oath, and a wake / sleep / dream cycle, wired into every Claude Code agent on the machine.",
   "type": "module",
   "bin": {
