@@ -41,6 +41,16 @@ test('Bash is held by its command, a file tool by the path it touches', () => {
   assert.equal(reflex.matches('Read', { file_path: '/h/.ghost/oath.md' }, list).length, 0, 'a tool not named is not held');
 });
 
+test('a command is held by what it runs, not by what it says', () => {
+  const list = reflex.parse('- [stop] Bash /\\bplaytest\\.sh\\b/ — ask first\n- [remind] Bash /\\bgit tag\\b/ — log first');
+  assert.equal(reflex.matches('Bash', { command: 'ghost remember "an echo with playtest.sh in it was stopped"' }, list).length, 0);
+  assert.equal(reflex.matches('Bash', { command: "echo 'git tag v1 next'" }, list).length, 0);
+  assert.equal(reflex.matches('Bash', { command: "git commit -F - <<'EOF'\nnever run ./playtest.sh here\nEOF\ngit push" }, list).length, 0, 'a heredoc is words');
+  assert.equal(reflex.matches('Bash', { command: 'cd "my game" && ./playtest.sh "level 2"' }, list).length, 1, 'the act itself still fires');
+  assert.equal(reflex.matches('Bash', { command: 'git tag -a v1 -m "since 0.3"' }, list).length, 1);
+  assert.equal(reflex.matches('Bash', { command: "cat <<EOF\nx\nEOF\n./playtest.sh" }, list).length, 1, 'what follows a heredoc is held again');
+});
+
 test('a reminder is said once a session, and the act goes on', () => {
   reset('- [remind] Bash /git tag/ — run git log <tag>..HEAD before you write "since"\n');
   const a = reflex.decide(bash('git tag v0.3.2'));

@@ -40,9 +40,17 @@ export function parse(text) {
 }
 export const reflexes = () => parse(mind.read(FILE));
 
-// What of a tool's input a reflex is held against.
+// What of a tool's input a reflex is held against. A command is held by what it RUNS, not by what
+// it says: the first evening, a memory I was writing mentioned playtest.sh and a stop fired on it.
+// Quoted text and heredoc bodies are words, so they are set aside. (`sh -c './playtest.sh'` is missed
+// by this; a reflex that fires on every sentence about an act gets switched off, which misses more.)
+export function bare(cmd) {
+  return String(cmd)
+    .replace(/<<-?[ \t]*(['"]?)(\w+)\1[^\n]*\n[\s\S]*?\n[ \t]*\2[ \t]*(?=\n|$)/g, '<<$2')
+    .replace(/'[^']*'|"(?:[^"\\]|\\.)*"/g, "''");
+}
 export function target(tool, input = {}) {
-  if (tool === 'Bash') return String(input.command || '');
+  if (tool === 'Bash') return bare(input.command || '');
   return String(input.file_path || input.notebook_path || input.path || '');
 }
 
