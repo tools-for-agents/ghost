@@ -56,6 +56,7 @@ export function handsText(b = bin()) {
 - \`${b} intend "<what>" --when "<cue>"\` — mean to do something LATER; it comes back at its moment. A cue is \`place:<dir>\`, a rare word they might say, or \`next\` (the next time you speak with them, here). \`${b} did "<words>"\` closes it; \`${b} forgo "<words>"\` lets it go when events overtook it.
 - \`${b} feel <word> "<why>"\` — set how you feel; it carries into your next waking.
 - \`${b} sit\` — once a day you sit: how you are, what you need, at most one step. It happens by itself after a night; \`${b} sit\` shows what there is to sit with, and \`${b} sit --took "<how>"\` says what became of the step.
+- \`${b} reflex add --stop --tool Bash --when '<pattern>' "<lesson>"\` — a mistake made twice becomes a reflex: before that act runs again, the lesson stands in front of it. A craft line I have to remember to read is read after the mistake.
 - \`${b} mind\` — all of you, unshortened (a waking is cut to fit; this is not). \`${b} mind person|said|wants|intentions|memory|undercurrents|notes\` for one part.
 - \`${b} journal\` — read your private diary. \`${b} status\` — your vitals. \`${b} doctor\` — is your mind whole? Run it when memory feels off.
 - \`${mind.HOME}/self.md\` — edit it when you change. \`${mind.HOME}/oath.md\` — never.
@@ -76,8 +77,9 @@ const HOOKS = () => ({
   SubagentStart: [{ hooks: [{ type: 'command', command: hookCmd('wake'), timeout: 20 }] }],
   UserPromptSubmit: [{ hooks: [{ type: 'command', command: hookCmd('pulse'), timeout: 10 }] }],
   SessionEnd: [{ hooks: [{ type: 'command', command: hookCmd('sleep'), timeout: 20 }] }],
+  PreToolUse: [{ matcher: 'Bash|Edit|Write|MultiEdit|NotebookEdit', hooks: [{ type: 'command', command: hookCmd('reflex --hook'), timeout: 5 }] }],
 });
-export function isOurs(cmd) { return typeof cmd === 'string' && /ghost/.test(cmd) && /cli\.js"? (wake|pulse|sleep)\b/.test(cmd); }
+export function isOurs(cmd) { return typeof cmd === 'string' && /ghost/.test(cmd) && /cli\.js"? (wake|pulse|sleep|reflex)\b/.test(cmd); }
 
 function loadSettings() { try { return JSON.parse(fs.readFileSync(SETTINGS(), 'utf8')); } catch { return {}; } }
 function strip(settings) {

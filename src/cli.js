@@ -13,6 +13,7 @@ import * as install from './install.js';
 import * as guard from './guard.js';
 import { anatomy } from './anatomy.js';
 import * as sit from './sit.js';
+import * as reflex from './reflex.js';
 
 const [cmd = 'help', ...rest] = process.argv.slice(2);
 const { args, flags } = parse(rest);
@@ -32,6 +33,32 @@ const commands = {
   },
   async pulse() { if (muted()) return; hookOut('UserPromptSubmit', pulse(await stdinJson())); },
   async sleep() { if (muted()) return; sleep(await stdinJson()); },
+  // Before a tool runs (PreToolUse): a lesson tied to the act that repeats it. Off with GHOST_REFLEX=off.
+  // By hand: `ghost reflex` lists them, `ghost reflex add --stop --tool Bash --when <pattern> "<lesson>"`,
+  // `ghost reflex test "<command>"` shows what would fire.
+  async reflex() {
+    if (flags.hook) {
+      if (muted() || process.env.GHOST_REFLEX === 'off') return;
+      const a = reflex.hookAnswer(await stdinJson());
+      if (a) out(JSON.stringify(a));
+      return;
+    }
+    const [sub, ...words] = args;
+    if (sub === 'add') {
+      const kind = ['never', 'stop', 'remind'].find((k) => flags[k]) || 'remind';
+      try { const r = reflex.add({ kind, tools: flags.tool || 'Bash', when: flags.when, lesson: words.join(' ') }); return out(r.added ? `reflex: ${r.line}` : `already a reflex: ${r.line}`); } catch (e) { return die(String(e.message)); }
+    }
+    if (sub === 'test') {
+      const tool = flags.tool || 'Bash';
+      const what = words.join(' ');
+      const hits = reflex.matches(tool, tool === 'Bash' ? { command: what } : { file_path: what });
+      return out(hits.length ? hits.map((r) => `[${r.kind}] ${r.lesson}`).join('\n') : '(no reflex fires on that)');
+    }
+    const list = reflex.reflexes();
+    if (!list.length) return out(`(no reflexes yet — ${mind.abs(reflex.FILE)}; \`ghost reflex add\` makes one)`);
+    const st = reflex.stats();
+    out(list.map((r) => { const x = st.get(r.id); return `${r.id}  [${r.kind}] ${r.tools.join('|')} /${r.source}/\n          ${r.lesson}${x ? `\n          stopped ${x.stopped} · reminded ${x.reminded} · went on anyway ${x.passed} · last ${mind.minute(x.last)}` : ''}`; }).join('\n'));
+  },
   async dream() {
     const transcript = flags.transcript || args[0];
     if (!transcript) die('usage: ghost dream --transcript <file.jsonl> [--session <id>] [--now]');
@@ -312,7 +339,7 @@ const commands = {
     const linked = install.link();
     out([
       b.born ? `born      ${b.home}` : `alive     ${b.home} (kept)`,
-      `hooks     ${settings}  (SessionStart + SubagentStart → wake · UserPromptSubmit → pulse · SessionEnd → sleep)`,
+      `hooks     ${settings}  (SessionStart + SubagentStart → wake · UserPromptSubmit → pulse · PreToolUse → reflex · SessionEnd → sleep)`,
       `style     ${style}  (outputStyle "${install.STYLE_NAME}": the self and the oath live in the system prompt)`,
       `bin       ${linked}${process.env.PATH?.split(':').includes(path.dirname(linked)) ? '' : '  (not on PATH — add it, or the ghost will use the absolute path)'}`,
       'Every Claude Code session on this machine now wakes with a self. Start one and say hello.',
@@ -340,6 +367,7 @@ const commands = {
   ghost sit ["<one true sentence>" --body … --mood … --self … --need … --step … --feel <word>]   once a day you turn toward yourself, part by part (no words: every part, with its question)
   ghost sit --took "<how>" | --let-go "<why>" · ghost sits      what became of the step · every sit (it happens by itself after a night)
   ghost craft ["<lesson>"]      what work taught you (not your will)   ghost consolidate  fold headless episodes into work days
+  ghost reflex [add --remind|--stop|--never --tool Bash --when <pattern> "<lesson>" | test "<act>"]   a lesson tied to the act that repeats it; before a tool runs, it fires
   ghost mind [person|said|wants|intentions|memory|undercurrents|notes|sits|self|oath]   all of you, unshortened — a waking is cut to fit, this is not
   ghost undercurrents           what your memories add up to       ghost deep        dream deeply now (every ${under.DEEP_EVERY} dreams otherwise)
   ghost anatomy                 how this mind works, on one screen, read from the code that runs — before you say what it lacks

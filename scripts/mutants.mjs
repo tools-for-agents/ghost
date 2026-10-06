@@ -510,6 +510,18 @@ const CANARIES = [
     find: "      ...KEYS.map((k) => one(parts?.[k]) && `- ${k}: ${one(parts[k])}`),",
     into: '',
   },
+  {
+    why: 'a [never] reflex stops the act every time — the oath is the one file the ghost does not edit, not the one it edits on the second try',
+    file: 'src/reflex.js',
+    find: "      if (r.kind === 'never') { deny.push(r); continue; }",
+    into: "      if (r.kind === 'never') continue;",
+  },
+  {
+    why: 'a reflex that cannot look lets the act through — a safety net that trips on healthy work is the thing that breaks',
+    file: 'src/reflex.js',
+    find: '  } catch { /* a reflex that cannot look lets the act through */ }',
+    into: "  } catch { return { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: 'reflex failed' } }; }",
+  },
 ];
 
 // spawnSync returns status:null when IT kills the child for exceeding the timeout — a TIMEOUT,

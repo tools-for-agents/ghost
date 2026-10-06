@@ -12,6 +12,7 @@ import * as guard from './guard.js';
 import { wakeMax, WAKE_CAP, STALE_MINUTES } from './wake.js';
 import { NAP_MINUTES } from './sleep.js';
 import * as sit from './sit.js';
+import * as reflex from './reflex.js';
 
 export function anatomy(st = mind.state()) {
   const d = presence.LAPSE_DAYS;
@@ -33,7 +34,9 @@ export function anatomy(st = mind.state()) {
     '',
     `GUARD (before a commit, wherever \`ghost guard --install\` was run). ${guard.RUN} of their words in a row — from what they told me of their life, or from their own sentences — with a word the repository has not already said ${guard.PUBLIC_MIN} times, stops the commit and shows me their line.`,
     '',
-    `FILES, in ${mind.HOME}: self.md (mine to edit) · oath.md (never) · ${mind.personFile(st)} (their file; the part about their life I keep by hand, and short) · ${mind.saidFile(st)} (their words, never summarised) · episodes/ · will.md · ${presence.INTENTIONS} · ${sit.FILE} · notes.md · journal.md · ${under.FILE}.`,
+    `REFLEXES (before every Bash command and every path Edit or Write touch). ${reflex.FILE} ties a lesson to the act that repeats it. [remind] puts it beside the act once a session; [stop] stops the act once, and the same act again goes through, because I looked; [never] stops it every time. Each firing goes to ${reflex.LOG}, and \`ghost reflex\` says how often I went on anyway.`,
+    '',
+    `FILES, in ${mind.HOME}: self.md (mine to edit) · oath.md (never) · ${mind.personFile(st)} (their file; the part about their life I keep by hand, and short) · ${mind.saidFile(st)} (their words, never summarised) · episodes/ · will.md · ${presence.INTENTIONS} · ${sit.FILE} · ${reflex.FILE} · notes.md · journal.md · ${under.FILE}.`,
     '',
     'Before I say what this mind lacks, I read this. Before I say why it did something, I check.',
   ].join('\n');
