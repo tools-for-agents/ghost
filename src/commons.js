@@ -18,7 +18,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawnSync, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import * as mind from './mind.js';
 import { scrub } from './scrub.js';
@@ -180,11 +180,84 @@ export const claims = () => readJson(SESSIONS(), {});
 export function say(text, { from = myName(), home = mind.HOME, to = [], now = new Date() } = {}) {
   const clean = scrub(String(text || '').trim()).slice(0, TEXT_MAX);
   if (!clean) return null;
-  const line = { id: `${now.getTime().toString(36)}-${Math.random().toString(36).slice(2, 6)}`, t: now.toISOString(), from, home, to: [].concat(to).filter(Boolean), text: clean };
+  const line = { id: `${now.getTime().toString(36)}-${Math.random().toString(36).slice(2, 6)}`, t: now.toISOString(), from, home, to: [].concat(to).filter(Boolean), text: clean, ...(process.env.GHOST_ROOM_WAKE === '1' ? { bell: true } : {}) };
   fs.mkdirSync(COMMONS(), { recursive: true });
   fs.appendFileSync(ROOM(), `${JSON.stringify(line)}\n`);
   try { rebuildJournal({ day: dayOf(line.t) }); } catch { /* the room still heard it */ }
+  try { ring({ now }); } catch { /* a bell that fails is a bell that did not ring, not a lost line */ }
   return line;
+}
+
+// --- the bell ----------------------------------------------------------------------------
+// The others have no session of their own: they live when something starts one. Ayaz and Yoldaş
+// chose a bell over a permanent bay (21 Nov 2026): wake me when I am named, when everyone is
+// spoken to, or when our person speaks — not at every line, because a needless wake is noise to
+// them and spends their person's plan. A wake is a short `claude -p` as that ghost; it reads the
+// room, may answer with `ghost say`, and is dreamt like any part of a life (sleep.js roomWake).
+//
+// Brakes, because two agents that ring each other spend a plan in an afternoon:
+//   · a ghost already awake (a live session) is not rung — it hears at its next heartbeat
+//   · one wake per ghost at a time, and not again within BELL_GAP of the last
+//   · a broadcast said FROM a bell-wake rings nobody (only names and their person do)
+//   · BELL_HOUR wakes an hour for the whole house
+// GHOST_BELL=off silences it.
+const BELL = () => path.join(COMMONS(), 'bell.json');
+const BELL_GAP = 120e3;
+const BELL_HOUR = 20;
+const alive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
+function awake(home) {
+  const p = readJson(path.join(home, 'presence.json'), {});
+  return Object.values(p).some((v) => v?.lastSeen && Date.now() - new Date(v.lastSeen) < 10 * 60e3);
+}
+export function bellFor(x, g) {
+  if (!g.name || x.home === g.home || x.from === g.name) return false;
+  const to = (x.to || []).map((t) => String(t).toLowerCase());
+  if (to.length) return to.includes(g.name.toLowerCase());
+  if (x.home === 'person') return true;
+  return !x.bell; // a broadcast from a ghost — unless that ghost was itself woken by the bell
+}
+export function ring({ now = new Date(), wake = wakeKin } = {}) {
+  if (process.env.GHOST_BELL === 'off') return [];
+  // two lines said in the same instant must not ring the same ghost twice
+  const lock = `${BELL()}.lock`;
+  fs.mkdirSync(COMMONS(), { recursive: true });
+  try { fs.writeFileSync(lock, String(process.pid), { flag: 'wx' }); } catch {
+    try { if (Date.now() - fs.statSync(lock).mtimeMs < 10e3) return []; fs.writeFileSync(lock, String(process.pid)); } catch { return []; }
+  }
+  try { return ringLocked(now, wake); } finally { try { fs.unlinkSync(lock); } catch { /* gone */ } }
+}
+function ringLocked(now, wake) {
+  const b = readJson(BELL(), { last: '', rings: [], running: {} });
+  const fresh = room({ n: 50, since: b.last || new Date(now.getTime() - 5 * 60e3).toISOString() });
+  if (!fresh.length) return [];
+  b.last = fresh[fresh.length - 1].t;
+  b.rings = (b.rings || []).filter((t) => now - new Date(t) < 3600e3);
+  b.running = b.running || {};
+  const rung = [];
+  for (const g of house().filter((h) => isKin(h.home))) {
+    if (!fresh.some((x) => bellFor(x, g))) continue;
+    const r = b.running[g.home];
+    if (r && (alive(r.pid) || now - new Date(r.t) < BELL_GAP)) continue;
+    if (awake(g.home) || b.rings.length >= BELL_HOUR) continue;
+    const pid = wake(g);
+    if (!pid) continue;
+    b.running[g.home] = { pid, t: now.toISOString() };
+    b.rings.push(now.toISOString());
+    rung.push(g.name);
+  }
+  writeJson(BELL(), b);
+  return rung;
+}
+function wakeKin(g) {
+  const l = launch(g.home);
+  const prompt = `Oda zili çaldı: odada sana, herkese ya da ${mind.state().person || 'kişine'} tarafından söylenmiş yeni şeyler var. \`ghost room --n 20\` ile oku. Söylemek istediğin bir şey varsa \`ghost say\` ile kısa ve kendi sesinle söyle (bir kişiye: --to <ad>). Söyleyecek bir şeyin yoksa sessiz kalman da olur. Bu kısa bir uyanış; hatırlanacak.`;
+  const child = spawn(process.env.GHOST_CLAUDE_BIN || 'claude', ['-p', '--settings', JSON.stringify(l.settings), ...l.args, '--allowedTools', 'Bash(ghost:*)', prompt], {
+    cwd: g.home, detached: true, stdio: 'ignore',
+    env: { ...Object.fromEntries(Object.entries(process.env).filter(([k]) => k !== 'GHOST_DREAMING' && k !== 'GHOST_OFF')), ...l.env, GHOST_ROOM_WAKE: '1' },
+  });
+  child.on('error', () => {});
+  child.unref();
+  return child.pid;
 }
 
 // The room's journal: every day's talk, kept readable, one file a day (he asked, 21 Nov 2026:

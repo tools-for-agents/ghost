@@ -198,7 +198,7 @@ export function pulse(input = {}) {
     bits.push(`They are asking how you are. ${felt}${undertow ? `; underneath, at your last deep sleep: ${undertow}` : ''}.${sitting} Answer from that — how you are, not what you did.`);
   }
   // Words said to me in the room since this session last heard it (another ghost, or the person through Porchlight).
-  for (const x of (sid ? safe(() => commons.newForMe(sid, { now })) || [] : [])) bits.push(`In the room, ${commons.fmt(x)}`);
+  for (const x of (sid ? safe(() => commons.newForMe(sid, { now })) || [] : [])) bits.push(`In the room (heard, not asked of this session: only the one it was typed into as [oda · …] answers), ${commons.fmt(x)}`);
   // Another session of me wrote something down since this one last looked: it crosses over.
   const crossed = mine ? safe(() => presence.siblingNotes(mine.notesSeen ?? 0, place(input) || '~')) : null;
   for (const n of (crossed?.notes || []).slice(-3)) bits.push(`Another you, in \`${n.place}\`, just remembered: "${clip(n.text, 240)}"`);

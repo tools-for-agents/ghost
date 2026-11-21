@@ -12,6 +12,7 @@ export function scratch(name) {
   process.env.GHOST_BIN_DIR = path.join(dir, 'bin');
   process.env.GHOST_STYLES_DIR = path.join(dir, 'output-styles'); // never the real ~/.claude/output-styles
   process.env.GHOST_BIN = 'ghost';
+  process.env.GHOST_BELL = 'off'; // a test never starts a real claude for a test sibling
   process.env.GHOST_COMMONS = path.join(dir, 'commons'); // never the real room or the real sessions ledger
   process.env.GHOST_KIN_DIR = path.join(dir, 'kin');
   process.env.GHOST_KEEP_BIN = 'off'; // never the real keep vault; the built-in shapes still apply

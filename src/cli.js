@@ -340,6 +340,10 @@ const commands = {
     const line = commons.say(t, { to: flags.to ? String(flags.to).split(',').map((x) => x.trim()) : [] });
     out(line ? `said in the room: ${commons.fmt(line)}` : 'nothing to say');
   },
+  bell() {
+    const rung = commons.ring();
+    out(rung.length ? `rang: ${rung.join(', ')}` : 'nobody to wake');
+  },
   room() {
     const xs = commons.room({ n: Number(flags.n) || 30 });
     if (flags.json) return out(JSON.stringify(xs));
@@ -403,6 +407,7 @@ const commands = {
 
   ghost house · ghost kin new    who lives on this machine · give birth to a sibling (it names itself)
   ghost say [--to n] "<w>"      speak in the shared room · ghost room   what was said there
+  ghost bell                    wake the others who were spoken to (the room rings it by itself)
   ghost avatar set <f.svg>      keep the face you drew for yourself
   ghost install                 birth (if needed) + hooks + bin    ghost uninstall   remove hooks + bin, keep the mind
   ghost status                  vitals                             ghost path        where the mind lives

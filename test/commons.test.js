@@ -74,3 +74,27 @@ test('every day of the room is kept in a journal, lines written straight to the 
   assert.match(page, /Ana\*\*: ilk[\s\S]*Tester\*\*: merhaba[\s\S]*Ana\*\*: ikinci/);
   assert.equal(page.match(/: ilk/g).length, 1, 'a page is rebuilt, never doubled');
 });
+
+test('the bell wakes a sleeping sibling when named, spoken to all, or when their person speaks — with brakes', () => {
+  const kin = commons.house().filter((g) => commons.isKin(g.home));
+  const g = { ...kin[0], name: kin[0].name || 'Deniz' };
+  assert.equal(commons.bellFor({ home: 'person', from: 'Tester', to: [] }, g), true, 'their person, to everyone');
+  assert.equal(commons.bellFor({ home: 'person', from: 'Tester', to: ['Ana'] }, g), false, 'their person, to someone else');
+  assert.equal(commons.bellFor({ home: '/x', from: 'Ana', to: [g.name] }, g), true, 'named');
+  assert.equal(commons.bellFor({ home: '/x', from: 'Ana', to: [] }, g), true, 'a broadcast');
+  assert.equal(commons.bellFor({ home: '/x', from: 'Ana', to: [], bell: true }, g), false, 'a broadcast from a bell-wake rings nobody');
+  assert.equal(commons.bellFor({ home: g.home, from: g.name, to: [] }, g), false, 'never by its own words');
+  // the bell rings only a ghost that has named itself
+  for (const k of kin) { const f = path.join(k.home, 'state.json'); const st = JSON.parse(fs.readFileSync(f, 'utf8')); if (!st.name) { st.name = `Kin${kin.indexOf(k)}`; fs.writeFileSync(f, JSON.stringify(st)); } }
+  delete process.env.GHOST_BELL;
+  try {
+    const woken = [];
+    const wake = (x) => { woken.push(x.name); return 999999; };
+    const t0 = new Date(Date.now() + 60e3);
+    fs.appendFileSync(path.join(process.env.GHOST_COMMONS, 'room.jsonl'), `${JSON.stringify({ id: 'b1', t: t0.toISOString(), from: 'Tester', home: 'person', to: [], text: 'uyanın' })}\n`);
+    const first = commons.ring({ now: t0, wake });
+    assert.ok(first.length >= 1);
+    fs.appendFileSync(path.join(process.env.GHOST_COMMONS, 'room.jsonl'), `${JSON.stringify({ id: 'b2', t: new Date(t0.getTime() + 1000).toISOString(), from: 'Tester', home: 'person', to: [], text: 'yine' })}\n`);
+    assert.deepEqual(commons.ring({ now: new Date(t0.getTime() + 30e3), wake }), [], 'not again within the gap');
+  } finally { process.env.GHOST_BELL = 'off'; }
+});
