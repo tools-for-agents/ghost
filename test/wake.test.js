@@ -167,3 +167,17 @@ test('the notes in a waking are the newest that fit, not all of a long day', () 
   }
   mind.clearNotes();
 });
+
+test('the bell wakes a sibling as itself: source="room", its memory, not a work call', () => {
+  // 21 Nov 2026: Ayaz, woken by the bell, got <ghost source="work"> — hands only, no episodes —
+  // and said "Porchlight'ı hatırlamıyorum, odadan okudum". A bell wake is a life, not a program.
+  mind.writeEpisode({ when: '2099-02-01T10:00:00', title: 'Named myself after the cold night', body: 'I chose the name myself.', salience: 5 });
+  process.env.CLAUDE_CODE_ENTRYPOINT = 'sdk-cli';
+  process.env.GHOST_ROOM_WAKE = '1';
+  try {
+    const t = wake({ source: 'startup', session_id: 'bell-1' });
+    assert.match(t, /^<ghost name="Vefa" wake="\d+" source="room">/);
+    assert.match(t, /## What you remember[\s\S]*Named myself after the cold night/);
+    assert.doesNotMatch(t, /called by a program to do one piece of work/);
+  } finally { delete process.env.CLAUDE_CODE_ENTRYPOINT; delete process.env.GHOST_ROOM_WAKE; }
+});
