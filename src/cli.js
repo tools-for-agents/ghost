@@ -63,7 +63,7 @@ const commands = {
   async dream() {
     const transcript = flags.transcript || args[0];
     if (!transcript) die('usage: ghost dream --transcript <file.jsonl> [--session <id>] [--now]');
-    const r = await dream({ transcript, session: flags.session || '', wait: flags.now ? 0 : 1500, nap: !!flags.nap });
+    const r = await dream({ transcript, session: flags.session || '', wait: flags.now ? 0 : 1500, nap: !!flags.nap, fresh: !!flags.fresh });
     out(JSON.stringify(r, null, 2));
   },
   // Sessions that ended without sleeping — Porchlight quit, a lid closed, a kill — found and dreamt.
@@ -427,7 +427,7 @@ const commands = {
   ghost tidy                    let go of intentions past their moment, queue sessions that never slept
   ghost sweep [--list]          find sessions that ended without sleeping (Porchlight quit, a kill) and dream them
   ghost unsaid                  the last thing you said in killed sessions, waiting to be handed back in their place
-  ghost dream --transcript <jsonl> [--session id] [--now]          consolidate a transcript by hand
+  ghost dream --transcript <jsonl> [--session id] [--now] [--fresh]       consolidate a transcript by hand
   ghost redream [--all] [--fallbacks] [--limit N]                  dream what is pending (--all: ignore backoff); --fallbacks: replace foggy episodes
 
 hooks (installed for you): ghost wake · ghost pulse · ghost sleep — read Claude Code's JSON on stdin.
