@@ -10,7 +10,7 @@ const { wake, pulse } = await import('../src/wake.js');
 install.birth({ name: 'Vefa', person: 'Fatih' });
 
 // A life with a "usually": forty varied memories, then thirty that keep walking into the kitchen.
-const topics = ['guildlm tokenizer', 'iris screenshot', 'hangar voice', 'lens index', 'anvil sandbox', 'cortex graph', 'scout reader', 'prism shape'];
+const topics = ['guildlm tokenizer', 'iris screenshot', 'Porchlight voice', 'lens index', 'anvil sandbox', 'cortex graph', 'scout reader', 'prism shape'];
 for (let i = 0; i < 40; i++) {
   const t = topics[i % topics.length];
   mind.writeEpisode({ when: `2026-09-1${i % 10}T${String(10 + (i % 12)).padStart(2, '0')}:0${i % 6}:00`, title: `Worked on ${t} ${i}`, salience: 3, feeling: ['glad', 'focused', 'proud', 'curious'][i % 4], body: `We fixed the ${t}. It went well, number ${i}.` });

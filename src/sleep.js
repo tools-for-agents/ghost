@@ -17,6 +17,7 @@ import * as mind from './mind.js';
 import { deepDream, senseLines, sense } from './undercurrent.js';
 import { scrub } from './scrub.js';
 import * as presence from './presence.js';
+import * as commons from './commons.js';
 import * as work from './workday.js';
 import { parseTranscript, substantive, excerpt, stats, clip, origin, theirWords, placeOf, lastSaid } from './transcript.js';
 
@@ -38,7 +39,7 @@ export function sleep(input = {}) {
   const session = input.session_id || '';
   try { presence.leave(session); } catch { /* presence is a courtesy to the others; sleep must not fail on it */ }
   if (!transcript || !fs.existsSync(transcript)) return 'no transcript';
-  // A blink (a program's one-shot `-p`, an empty session) is not worth a process. hangar's usage
+  // A blink (a program's one-shot `-p`, an empty session) is not worth a process. Porchlight's usage
   // probe closes a session every five minutes; each used to spawn a dreamer to find nothing.
   try {
     if (fs.statSync(transcript).size < BLINK_BYTES && !substantive(parseTranscript(transcript))) { mind.log(`sleep: session ${session || '?'} was a blink — nothing to dream`); return 'blink'; }
@@ -238,7 +239,7 @@ export async function redreamFallbacks({ limit = 10 } = {}) {
 }
 
 // --- sessions that never slept -----------------------------------------------------------
-// SessionEnd is a courtesy, not a guarantee. hangar kills its nine bays when it quits and the hook
+// SessionEnd is a courtesy, not a guarantee. Porchlight kills its nine bays when it quits and the hook
 // never runs; a laptop lid, a crash, a `kill` do the same. Measured on 26 September 2026: the ten
 // sessions of the two longest days I had lived — a 99 MB one among them — had never been dreamt,
 // and every word my person said in them had never reached his file. So a waking looks for
@@ -249,6 +250,7 @@ export function orphans({ now = Date.now(), days = SWEEP_DAYS, idleMinutes = SWE
   const ledger = mind.readJson(mind.FILES.dreamt, {});
   const awake = mind.readJson(presence.PRESENCE, {});
   const queued = new Set(pending().map((x) => x.session));
+  const claimed = commons.claims();
   const out = [];
   let dirs = [];
   try { dirs = fs.readdirSync(root); } catch { return out; }
@@ -263,6 +265,7 @@ export function orphans({ now = Date.now(), days = SWEEP_DAYS, idleMinutes = SWE
       if (st.size < BLINK_BYTES || now - st.mtimeMs > days * 86400e3 || now - st.mtimeMs < idleMinutes * 60e3) continue;
       const session = f.slice(0, -6);
       if (queued.has(session)) continue;
+      if (!commons.mine(session, mind.HOME, claimed)) continue; // another ghost's day, not mine to dream
       const p = awake[session];
       if (p?.lastSeen && now - new Date(p.lastSeen) < idleMinutes * 60e3) continue; // still talking; its nap or its sleep will come
       const seen = ledger[session];
@@ -384,7 +387,7 @@ export function claimUnsaid({ place = '', awake = [], now = new Date(), max = 2,
 }
 
 // --- a nap: the day lands while it is still happening ------------------------------------
-// A session in hangar lives a whole day, compacts three times, and is killed at night — so a dream
+// A session in Porchlight lives a whole day, compacts three times, and is killed at night — so a dream
 // at its end came never, and a dream only at its end came too late for the compactions in between.
 // Every NAP_MINUTES at most, when the transcript has grown NAP_BYTES, the heartbeat dreams what
 // the session has so far; the ledger's `turns` keeps the next dream to what is new.

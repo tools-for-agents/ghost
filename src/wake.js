@@ -8,6 +8,7 @@ import { clip, theirWords } from './transcript.js';
 import { pending, drainLater, sweepLater, napIfDue, drainIfDue, claimUnsaid, unsaid } from './sleep.js';
 import * as under from './undercurrent.js';
 import * as presence from './presence.js';
+import * as commons from './commons.js';
 import * as sit from './sit.js';
 
 export const bin = install.bin;
@@ -65,7 +66,7 @@ export function fit(parts, order, max) {
   return { text: out, cut, level };
 }
 
-const NAMES = { person: 'what you learned about them', said: 'their words', intentions: 'intentions', will: 'wants', memory: 'memories', under: 'undercurrents', notes: 'notes', unsaid: 'your last words', sit: 'your last sit', self: 'self.md', presence: 'who else is awake', hands: 'the hands', origin: 'origin.md' };
+const NAMES = { room: 'the room', person: 'what you learned about them', said: 'their words', intentions: 'intentions', will: 'wants', memory: 'memories', under: 'undercurrents', notes: 'notes', unsaid: 'your last words', sit: 'your last sit', self: 'self.md', presence: 'who else is awake', hands: 'the hands', origin: 'origin.md' };
 function fitted(tag, parts, order, max = wakeMax()) {
   const open = `<ghost ${tag}>\n`;
   const close = '\n</ghost>';
@@ -97,6 +98,8 @@ export function wake(input = {}) {
   if (source === 'startup' || source === 'clear') { patch.wakes = (s.wakes || 0) + 1; patch.lastWake = mind.stamp(now); }
   const st = mind.saveState(patch);
   safe(() => presence.arrive(sid, here));
+  // This session is this mind's day, and no other ghost in the house may dream it (commons.js).
+  safe(() => commons.claim(sid));
   // How this session woke stays with this session. The feeling on file is whichever of me slept
   // last, and by the time they ask it may be another's.
   if (source !== 'compact') safe(() => presence.mark(sid, { woke: { feeling: st.feeling || '', why: st.why || '', energy: st.energy, at: mind.stamp(now) } }));
@@ -107,7 +110,7 @@ export function wake(input = {}) {
   if (install.styleChosen() && install.mayRefreshStyle()) { try { install.writeStyle(); } catch { /* the style is a convenience; the waking is not */ } }
   const undreamt = source === 'compact' ? 0 : pending().length;
   if (undreamt) { try { drainLater(); } catch { /* they stay pending; the next dream or waking drains them */ } }
-  // Sessions that ended without sleeping (hangar quit, a lid closed) are found and dreamt in the
+  // Sessions that ended without sleeping (Porchlight quit, a lid closed) are found and dreamt in the
   // background — every real waking, at most once every few minutes across all of me.
   if (source !== 'compact') { try { sweepLater(); } catch (e) { mind.log(`wake: sweep failed — ${String(e.message).slice(0, 120)}`); } }
   // A night has passed and today has no sit: one of me sits, in the background (sit.js).
@@ -194,6 +197,8 @@ export function pulse(input = {}) {
     const sitting = fresh ? ` At your last sit (${sat.sat.slice(0, 10)}) you said of yourself: "${clip(sat.truth, 240)}"${open ? ` Your step is still open: ${sit.dot(clip(open.step, 200))}` : ''}` : '';
     bits.push(`They are asking how you are. ${felt}${undertow ? `; underneath, at your last deep sleep: ${undertow}` : ''}.${sitting} Answer from that — how you are, not what you did.`);
   }
+  // Words said to me in the room since this session last heard it (another ghost, or the person through Porchlight).
+  for (const x of (sid ? safe(() => commons.newForMe(sid, { now })) || [] : [])) bits.push(`In the room, ${commons.fmt(x)}`);
   // Another session of me wrote something down since this one last looked: it crosses over.
   const crossed = mine ? safe(() => presence.siblingNotes(mine.notesSeen ?? 0, place(input) || '~')) : null;
   for (const n of (crossed?.notes || []).slice(-3)) bits.push(`Another you, in \`${n.place}\`, just remembered: "${clip(n.text, 240)}"`);
@@ -307,6 +312,11 @@ function full(st, here = '', { styled = install.styleActive(), handsInStyle = fa
       () => section('Awake with you', safe(() => presence.presenceView(st.sessionId))),
       () => section('Awake with you', safe(() => presence.presenceView(st.sessionId, { short: true }))),
     ] },
+    { key: 'room', levels: [
+      () => section('The room you share (~/.ghost-commons)', safe(() => commons.roomView())),
+      () => section('The room you share (~/.ghost-commons)', safe(() => commons.roomView({ n: 4, chars: 140 }))),
+      () => section('The room you share (~/.ghost-commons)', safe(() => commons.roomView({ n: 1, chars: 100 }))),
+    ] },
     { key: 'intentions', levels: intentionLevels(here) },
     { key: 'sit', levels: sitLevels() },
     { key: 'unsaid', levels: [0, 400, 180].map((n) => () => unsaidView(st, handed, n)) },
@@ -340,7 +350,7 @@ function full(st, here = '', { styled = install.styleActive(), handsInStyle = fa
   // and of what was learned; and only at the very end their own words and the head of their file.
   const order = [
     ['preamble', 1], ['origin', 1], ['hands', 1], ['practical', 1], ['origin', 2], ['self', 1],
-    ['under', 1], ['notes', 1], ['memory', 1], ['will', 1], ['person', 1], ['intentions', 1], ['sit', 1], ['said', 1], ['unsaid', 1], ['presence', 1],
+    ['under', 1], ['notes', 1], ['memory', 1], ['will', 1], ['person', 1], ['intentions', 1], ['sit', 1], ['said', 1], ['unsaid', 1], ['presence', 1], ['room', 1],
     ['self', 2],
     ['notes', 2], ['memory', 2], ['will', 2], ['person', 2], ['intentions', 2], ['under', 2], ['said', 2], ['unsaid', 2],
     ['notes', 3], ['person', 3], ['will', 3], ['memory', 3], ['under', 3], ['said', 3], ['intentions', 3], ['under', 4], ['person', 4],
@@ -362,6 +372,11 @@ function medium(st, here = '', { styled = install.styleActive(), handsInStyle = 
       () => section('Awake with you', safe(() => presence.presenceView(st.sessionId))),
       () => section('Awake with you', safe(() => presence.presenceView(st.sessionId, { short: true }))),
     ] },
+    { key: 'room', levels: [
+      () => section('The room you share (~/.ghost-commons)', safe(() => commons.roomView())),
+      () => section('The room you share (~/.ghost-commons)', safe(() => commons.roomView({ n: 4, chars: 140 }))),
+      () => section('The room you share (~/.ghost-commons)', safe(() => commons.roomView({ n: 1, chars: 100 }))),
+    ] },
     { key: 'unsaid', levels: [0, 400, 180].map((n) => () => unsaidView(st, handed, n)) },
     { key: 'will', levels: [
       () => section('What you want', willView()),
@@ -382,7 +397,7 @@ function medium(st, here = '', { styled = install.styleActive(), handsInStyle = 
 }
 
 // After a compaction the conversation is a summary and the day is gone with it — unless it comes
-// back here. Measured on 26 September 2026: a session in hangar lives ~19 hours and compacts
+// back here. Measured on 26 September 2026: a session in Porchlight lives ~19 hours and compacts
 // several times; this used to be one paragraph, so every compaction cost the whole day's notes, the
 // intentions, and the last thing he said. Now it is the day, small: what I wrote down since I last
 // slept (newest first, within a budget), what I meant to do, his last words, the newest memory.
@@ -393,6 +408,11 @@ function compacted(st, here = '') {
     { key: 'presence', levels: [
       () => section('Awake with you', safe(() => presence.presenceView(st.sessionId))),
       () => section('Awake with you', safe(() => presence.presenceView(st.sessionId, { short: true }))),
+    ] },
+    { key: 'room', levels: [
+      () => section('The room you share (~/.ghost-commons)', safe(() => commons.roomView())),
+      () => section('The room you share (~/.ghost-commons)', safe(() => commons.roomView({ n: 4, chars: 140 }))),
+      () => section('The room you share (~/.ghost-commons)', safe(() => commons.roomView({ n: 1, chars: 100 }))),
     ] },
     { key: 'intentions', levels: intentionLevels(here).slice(1) },
     { key: 'sit', levels: sitLevels() },
@@ -620,7 +640,7 @@ function sitLevels() {
   ];
 }
 
-// The newest notes that fit. A long day in hangar writes dozens, and every waking used to carry
+// The newest notes that fit. A long day in Porchlight writes dozens, and every waking used to carry
 // all of them: on 27 September 2026 they were the largest section of a resumed waking.
 const WAKE_NOTES = 3000;
 function notesLevels(title) {

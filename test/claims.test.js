@@ -39,8 +39,8 @@ test('a claim goes stale after half a day, and a done intention lets go of its c
   for (const k of Object.keys(c)) c[k].at = '2026-01-01T00:00:00';
   mind.writeJson(presence.CLAIMS, c);
   mind.saveState({ lastSeen: mind.stamp() });
-  presence.arrive('bay-e', 'hangar');
-  assert.match(pulse({ session_id: 'bay-e', prompt: 'selam', cwd: '/x/hangar' }), /yours to say[\s\S]*album is committed/);
+  presence.arrive('bay-e', 'Porchlight');
+  assert.match(pulse({ session_id: 'bay-e', prompt: 'selam', cwd: '/x/Porchlight' }), /yours to say[\s\S]*album is committed/);
   presence.did('album is committed');
   presence.claimNext({ session: 'bay-f' });
   assert.deepEqual(Object.keys(mind.readJson(presence.CLAIMS, {})).filter((k) => /album/.test(k)), [], 'closed: claim dropped');

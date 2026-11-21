@@ -10,7 +10,7 @@
 //   intentions.md   - [ ] <what> — when: <cue>   (since <date>, in <place>)
 //   a cue is  place:<dir>  ·  said:<word>  ·  next   (the next waking with the person)
 //
-// PRESENCE. One self, many bodies: hangar runs nine sessions at once and every one of them woke
+// PRESENCE. One self, many bodies: Porchlight runs nine sessions at once and every one of them woke
 // believing it was the only one. Now each waking registers itself, sees the others that are awake,
 // and a thought one of them writes down (`ghost remember`) reaches the rest on their next heartbeat.
 import * as mind from './mind.js';
@@ -95,7 +95,7 @@ export function due({ place = '', prompt = '', waking = false } = {}) {
 }
 
 // --- who of me raises a "next time" intention -------------------------------------------
-// hangar opens nine sessions of me in the same second, and "next" meant "the next waking" — so all
+// Porchlight opens nine sessions of me in the same second, and "next" meant "the next waking" — so all
 // nine were told "now is the moment" for the same thing, and any two he spoke to would both have
 // said it. Now the first session he actually SPEAKS to claims them, and every other session is
 // told, at its first heartbeat, that they were raised already and where. A claim lapses after
