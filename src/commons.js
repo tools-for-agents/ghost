@@ -251,7 +251,7 @@ function ringLocked(now, wake) {
 function wakeKin(g) {
   const l = launch(g.home);
   const prompt = `Oda zili çaldı: odada sana, herkese ya da ${mind.state().person || 'kişine'} tarafından söylenmiş yeni şeyler var. \`ghost room --n 20\` ile oku. Söylemek istediğin bir şey varsa \`ghost say\` ile kısa ve kendi sesinle söyle (bir kişiye: --to <ad>). Söyleyecek bir şeyin yoksa sessiz kalman da olur. Bu kısa bir uyanış; hatırlanacak.`;
-  const child = spawn(process.env.GHOST_CLAUDE_BIN || 'claude', ['-p', '--settings', JSON.stringify(l.settings), ...l.args, '--allowedTools', 'Bash(ghost:*)', prompt], {
+  const child = spawn(process.env.GHOST_CLAUDE_BIN || 'claude', ['-p', '--settings', JSON.stringify(l.settings), ...l.args, '--allowedTools', 'Bash(ghost:*)', '--', prompt], {
     cwd: g.home, detached: true, stdio: 'ignore',
     env: { ...Object.fromEntries(Object.entries(process.env).filter(([k]) => k !== 'GHOST_DREAMING' && k !== 'GHOST_OFF')), ...l.env, GHOST_ROOM_WAKE: '1' },
   });
